@@ -2,7 +2,15 @@ import { type FormEvent, useState } from 'react'
 import { Eye, EyeOff, LogIn, LogOut, RefreshCw } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
-import { clearGeminiApiKey, getGeminiApiKey, setGeminiApiKey, type Theme } from '../lib/settings'
+import {
+  clearGeminiApiKey,
+  getAnswerMode,
+  getGeminiApiKey,
+  setAnswerMode,
+  setGeminiApiKey,
+  type Theme,
+} from '../lib/settings'
+import { ANSWER_MODE_LABELS, ANSWER_MODES, type AnswerMode } from '../lib/answerMode'
 import { syncFromSupabase } from '../lib/repository'
 
 const THEME_OPTIONS: { value: Theme; label: string; swatch: string }[] = [
@@ -23,6 +31,8 @@ export default function SettingsPage() {
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
   const [loggingIn, setLoggingIn] = useState(false)
+
+  const [answerMode, setAnswerModeState] = useState<AnswerMode>(() => getAnswerMode())
 
   const [geminiKey, setGeminiKeyState] = useState(() => getGeminiApiKey() ?? '')
   const [showKey, setShowKey] = useState(false)
@@ -61,6 +71,11 @@ export default function SettingsPage() {
     setGeminiKeyState('')
   }
 
+  function handleAnswerModeChange(mode: AnswerMode) {
+    setAnswerModeState(mode)
+    setAnswerMode(mode)
+  }
+
   async function handleSync() {
     setSyncing(true)
     setSyncMessage(null)
@@ -97,6 +112,29 @@ export default function SettingsPage() {
                 style={{ backgroundColor: opt.swatch }}
               />
               {opt.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-app-border bg-app-surface p-4">
+        <h2 className="font-semibold">回答モード</h2>
+        <p className="text-xs text-app-text-muted">
+          AI回答の口調を選べます。会話の開始時に適用され、進行中の会話の口調は変わりません（管理者の生成機能用）。
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {ANSWER_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => handleAnswerModeChange(mode)}
+              className={`rounded-full px-4 py-2 text-sm font-medium ${
+                answerMode === mode
+                  ? 'bg-app-accent text-app-on-accent'
+                  : 'bg-app-surface-2 text-app-text-muted hover:bg-app-border'
+              }`}
+            >
+              {ANSWER_MODE_LABELS[mode]}
             </button>
           ))}
         </div>

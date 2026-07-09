@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
-import { RefreshCw, Sparkles } from 'lucide-react'
+import { RefreshCw, Sparkles, Trash2 } from 'lucide-react'
 import ChatBubble from '../components/ChatBubble'
 import ChatInput from '../components/ChatInput'
 import TagChipInput from '../components/TagChipInput'
@@ -9,8 +9,8 @@ import TagToggleList from '../components/TagToggleList'
 import MarkdownView from '../components/MarkdownView'
 import Toast from '../components/Toast'
 import { useAuth } from '../hooks/useAuth'
-import { getAnswerMode, getGeminiApiKey, setAnswerMode } from '../lib/settings'
-import { ANSWER_MODE_LABELS, ANSWER_MODES, type AnswerMode } from '../lib/answerMode'
+import { getAnswerMode, getGeminiApiKey } from '../lib/settings'
+import { ANSWER_MODE_LABELS, type AnswerMode } from '../lib/answerMode'
 import { generateEntry, generateFollowUp } from '../lib/gemini'
 import { createWordWithQuiz, findWordByTerm, listWords, updateWordWithQuiz } from '../lib/repository'
 import type { ChatMessage, GeneratedEntry, Word } from '../types'
@@ -44,7 +44,10 @@ export default function HomePage() {
   const [toast, setToast] = useState<string | null>(null)
 
   const [chatInputHeight, setChatInputHeight] = useState(0)
-  const [answerMode, setAnswerModeState] = useState<AnswerMode>(() => getAnswerMode())
+
+  // この会話に固定された回答モード。生成開始時の設定値を保持し、途中で設定を変えても
+  // 会話の口調が混ざらないようにする（docs/DESIGN.md §4.2）。
+  const [conversationMode, setConversationMode] = useState<AnswerMode | null>(null)
 
   const geminiKey = getGeminiApiKey()
 
@@ -66,7 +69,9 @@ export default function HomePage() {
     try {
       const key = getGeminiApiKey()
       if (!key) throw new Error('Gemini APIキーが設定されていません。設定画面で登録してください。')
-      const result = await generateEntry(query, key, existingTags, answerMode)
+      const mode = getAnswerMode()
+      setConversationMode(mode)
+      const result = await generateEntry(query, key, existingTags, mode)
       setEntry(result)
       setEntryTags(result.tags)
       setConversation([{ role: 'model', text: result.definition }])
@@ -93,7 +98,7 @@ export default function HomePage() {
     setFollowUpLoading(true)
     setFollowUpError(null)
     try {
-      const answer = await generateFollowUp(historyWithQuestion, key, answerMode)
+      const answer = await generateFollowUp(historyWithQuestion, key, conversationMode ?? getAnswerMode())
       setConversation((prev) => [...prev, { role: 'model', text: answer }])
     } catch (e) {
       setFollowUpError(e instanceof Error ? e.message : '追加質問に失敗しました。')
@@ -126,6 +131,7 @@ export default function HomePage() {
     setEntryTags([])
     setDuplicate(null)
     setConversation([])
+    setConversationMode(null)
     setInput('')
     setLastQuery('')
     setGenError(null)
@@ -179,11 +185,6 @@ export default function HomePage() {
   }
 
   const handleChatInputHeightChange = useCallback((height: number) => setChatInputHeight(height), [])
-
-  function handleAnswerModeChange(mode: AnswerMode) {
-    setAnswerModeState(mode)
-    setAnswerMode(mode)
-  }
 
   // 継続質問の吹き出しが追加されたら最下部（最新のやりとり）まで自動スクロールする。
   useEffect(() => {
@@ -339,22 +340,21 @@ export default function HomePage() {
         placeholder={entry ? '追加で質問する...' : '例: PWA / PWAについて教えて'}
         onHeightChange={handleChatInputHeightChange}
       >
-        <div className="mx-auto mb-2 flex max-w-2xl items-center gap-1.5 overflow-x-auto">
-          {ANSWER_MODES.map((mode) => (
+        {entry && (
+          <div className="mx-auto mb-2 flex max-w-2xl items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-xs text-app-text-muted">
+              回答モード「{ANSWER_MODE_LABELS[conversationMode ?? 'standard']}」で会話中
+            </span>
             <button
-              key={mode}
               type="button"
-              onClick={() => handleAnswerModeChange(mode)}
-              className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
-                answerMode === mode
-                  ? 'bg-app-accent text-app-on-accent'
-                  : 'bg-app-surface-2 text-app-text-muted hover:bg-app-border'
-              }`}
+              onClick={handleReset}
+              className="flex shrink-0 items-center gap-1 rounded-full border border-app-border px-3 py-1 text-xs font-medium text-app-text-muted"
             >
-              {ANSWER_MODE_LABELS[mode]}
+              <Trash2 className="h-3.5 w-3.5" />
+              会話をリセット
             </button>
-          ))}
-        </div>
+          </div>
+        )}
       </ChatInput>
     </div>
   )
