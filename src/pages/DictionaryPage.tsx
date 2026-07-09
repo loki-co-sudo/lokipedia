@@ -4,6 +4,8 @@ import Skeleton from '../components/Skeleton'
 import TagToggleList from '../components/TagToggleList'
 import WordCard from '../components/WordCard'
 import { listWords } from '../lib/repository'
+import { getDictionarySort, setDictionarySort, type DictionarySort } from '../lib/settings'
+import { sortWordsByKana, sortWordsByLatest } from '../lib/wordSort'
 import type { Word } from '../types'
 
 /**
@@ -15,6 +17,7 @@ export default function DictionaryPage() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [sort, setSort] = useState<DictionarySort>(() => getDictionarySort())
 
   useEffect(() => {
     listWords()
@@ -42,8 +45,18 @@ export default function DictionaryPage() {
     })
   }, [words, search, selectedTags])
 
+  const sortedWords = useMemo(
+    () => (sort === 'kana' ? sortWordsByKana(filteredWords) : sortWordsByLatest(filteredWords)),
+    [filteredWords, sort],
+  )
+
   function toggleTag(tag: string) {
     setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+  }
+
+  function handleSortChange(next: DictionarySort) {
+    setSort(next)
+    setDictionarySort(next)
   }
 
   return (
@@ -61,6 +74,21 @@ export default function DictionaryPage() {
         />
       </div>
 
+      <div className="flex gap-2">
+        {(['latest', 'kana'] as const).map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => handleSortChange(opt)}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+              sort === opt ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            {opt === 'latest' ? '新着順' : '50音順'}
+          </button>
+        ))}
+      </div>
+
       {allTags.length > 0 && <TagToggleList tags={allTags} selected={selectedTags} onToggle={toggleTag} />}
 
       {loading && (
@@ -76,15 +104,15 @@ export default function DictionaryPage() {
       )}
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
-      {!loading && !error && filteredWords.length === 0 && (
+      {!loading && !error && sortedWords.length === 0 && (
         <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-400">
           {words.length === 0 ? 'まだ単語が登録されていません' : '条件に一致する単語がありません'}
         </p>
       )}
 
-      {!loading && filteredWords.length > 0 && (
+      {!loading && sortedWords.length > 0 && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {filteredWords.map((word) => (
+          {sortedWords.map((word) => (
             <WordCard key={word.id} word={word} />
           ))}
         </div>

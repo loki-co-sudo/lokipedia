@@ -14,3 +14,15 @@ export function setGeminiApiKey(key: string): void {
 export function clearGeminiApiKey(): void {
   localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY)
 }
+
+const DICTIONARY_SORT_STORAGE_KEY = 'lokipedia:dictionary-sort'
+
+export type DictionarySort = 'latest' | 'kana'
+
+export function getDictionarySort(): DictionarySort {
+  return localStorage.getItem(DICTIONARY_SORT_STORAGE_KEY) === 'kana' ? 'kana' : 'latest'
+}
+
+export function setDictionarySort(sort: DictionarySort): void {
+  localStorage.setItem(DICTIONARY_SORT_STORAGE_KEY, sort)
+}

@@ -226,6 +226,18 @@ export async function updateWordTags(id: string, tags: string[]): Promise<void> 
   await db.words.update(id, { tags })
 }
 
+// reading（よみがな）の表示・編集用。旧データ（reading が NULL）のバックフィル手段を兼ねる（docs/DESIGN.md §5.2）。
+export async function updateWordReading(id: string, reading: string): Promise<void> {
+  requireOnline()
+  const client = requireSupabase()
+  const { error } = await client
+    .from('words')
+    .update({ reading, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+  await db.words.update(id, { reading })
+}
+
 export async function deleteWord(id: string): Promise<void> {
   requireOnline()
   const client = requireSupabase()

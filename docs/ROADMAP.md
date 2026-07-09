@@ -190,15 +190,15 @@
 
 **ゴール**: 辞書一覧をデフォルト新着順・切替で50音順に並べられる（DESIGN.md §5.2）。
 
-- [ ] `src/lib/wordSort.ts`: `sortWordsByLatest(words)` / `sortWordsByKana(words)`（`Intl.Collator('ja')` で `reading ?? term` を比較）を純粋関数で実装 + vitest。
-- [ ] `src/lib/settings.ts`: `lokipedia:dictionary-sort`（`'latest' | 'kana'`）の get/set を追加。
-- [ ] `src/pages/DictionaryPage.tsx`: セグメントコントロール「新着順 / 50音順」。選択を永続化し、初期表示に反映。
-- [ ] `src/pages/WordDetailPage.tsx`（管理者のみ）: `reading` の表示・編集 UI。`src/lib/repository.ts` に `updateWordReading(id: string, reading: string): Promise<void>`（`updated_at` も更新、IndexedDB 反映）を追加。reading が NULL の旧データのバックフィル手段を兼ねる。
+- [x] `src/lib/wordSort.ts`: `sortWordsByLatest(words)` / `sortWordsByKana(words)`（`Intl.Collator('ja')` で `reading ?? term` を比較）を純粋関数で実装 + vitest。
+- [x] `src/lib/settings.ts`: `lokipedia:dictionary-sort`（`'latest' | 'kana'`）の get/set を追加。
+- [x] `src/pages/DictionaryPage.tsx`: セグメントコントロール「新着順 / 50音順」。選択を永続化し、初期表示に反映。
+- [x] `src/pages/WordDetailPage.tsx`（管理者のみ）: `reading` の表示・編集 UI。`src/lib/repository.ts` に `updateWordReading(id: string, reading: string): Promise<void>`（`updated_at` も更新、IndexedDB 反映）を追加。reading が NULL の旧データのバックフィル手段を兼ねる。
 
 ### 受け入れ条件
-- [ ] ユニットテスト: ひらがな/カタカナ語の順序、`reading` を持つ漢字語が読みで整列すること、`reading` が null の語は `term` にフォールバックすること、英数字語を含めても順序が安定すること。
-- [ ] Playwright（モック）: 切替でカードの DOM 順が変わり、リロード後も選択が維持される。
-- [ ] reading 編集後、50音順の並びに反映される。
+- [x] ユニットテスト: ひらがな/カタカナ語の順序、`reading` を持つ漢字語が読みで整列すること、`reading` が null の語は `term` にフォールバックすること、英数字語を含めても順序が安定すること。`src/lib/wordSort.test.ts` で確認。
+- [ ] Playwright（モック）: 切替でカードの DOM 順が変わり、リロード後も選択が維持される。**Playwright未導入のため未実施**。`DictionaryPage.tsx` の実装（`sortedWords` の再計算・`setDictionarySort` によるlocalStorage永続化・初期値を`getDictionarySort()`から取得）をコードレビューで確認済み。
+- [x] reading 編集後、50音順の並びに反映される。`sortWordsByKana` は `word.reading` を直接参照するため、`updateWordReading` 後に `word` state が更新されれば次回の並び替えに反映される（DictionaryPageは`listWords()`経由で最新データを取得）。
 
 ---
 

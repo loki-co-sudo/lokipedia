@@ -13,6 +13,7 @@ import {
   listQuizHistoryForWord,
   listQuizzes,
   listWords,
+  updateWordReading,
   updateWordTags,
 } from '../lib/repository'
 import { generateEntry } from '../lib/gemini'
@@ -34,6 +35,9 @@ export default function WordDetailPage() {
 
   const [editingTags, setEditingTags] = useState<string[] | null>(null)
   const [savingTags, setSavingTags] = useState(false)
+
+  const [editingReading, setEditingReading] = useState<string | null>(null)
+  const [savingReading, setSavingReading] = useState(false)
 
   const [deleting, setDeleting] = useState(false)
   const [addingQuiz, setAddingQuiz] = useState(false)
@@ -67,6 +71,22 @@ export default function WordDetailPage() {
       setError('タグの更新に失敗しました。')
     } finally {
       setSavingTags(false)
+    }
+  }
+
+  async function handleSaveReading() {
+    if (!id || editingReading === null) return
+    setSavingReading(true)
+    try {
+      const reading = editingReading.trim()
+      await updateWordReading(id, reading)
+      setWord((w) => (w ? { ...w, reading } : w))
+      setEditingReading(null)
+    } catch (e) {
+      console.error('[WordDetailPage] よみがなの更新に失敗しました', e)
+      setError('よみがなの更新に失敗しました。')
+    } finally {
+      setSavingReading(false)
     }
   }
 
@@ -131,7 +151,49 @@ export default function WordDetailPage() {
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
 
       <div>
-        <h1 className="text-2xl font-bold">{word.term}</h1>
+        <h1 className="text-2xl font-bold break-words">{word.term}</h1>
+
+        {isAdmin && (
+          <div className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+            {editingReading === null ? (
+              <>
+                <span>よみがな: {word.reading ?? '未設定'}</span>
+                <button
+                  type="button"
+                  onClick={() => setEditingReading(word.reading ?? '')}
+                  className="text-xs text-slate-400 underline"
+                >
+                  編集
+                </button>
+              </>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={editingReading}
+                  onChange={(e) => setEditingReading(e.target.value)}
+                  placeholder="ひらがな"
+                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-sky-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSaveReading()}
+                  disabled={savingReading}
+                  className="rounded-lg bg-sky-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  {savingReading ? '保存中...' : '保存'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingReading(null)}
+                  className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700"
+                >
+                  キャンセル
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {editingTags === null ? (
           <div className="mt-2 flex flex-wrap items-center gap-1">
