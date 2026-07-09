@@ -4,7 +4,7 @@
 
 import { db, LAST_SYNCED_AT_KEY } from './db'
 import { supabase, supabaseConfigError } from './supabase'
-import type { ChoiceIndex, Quiz, Word } from '../types'
+import type { ChoiceIndex, Quiz, QuizHistoryEntry, Word } from '../types'
 
 interface WordRow {
   id: string
@@ -234,4 +234,11 @@ export async function syncFromSupabase(): Promise<void> {
 export async function getLastSyncedAt(): Promise<string | null> {
   const entry = await db.meta.get(LAST_SYNCED_AT_KEY)
   return entry?.value ?? null
+}
+
+// ---------- 解答履歴（端末ローカルのみ。docs/DESIGN.md §2.1 決定事項） ----------
+
+export async function listQuizHistoryForWord(wordId: string): Promise<QuizHistoryEntry[]> {
+  const entries = await db.quizHistory.where('wordId').equals(wordId).toArray()
+  return entries.sort((a, b) => b.answeredAt.localeCompare(a.answeredAt))
 }
