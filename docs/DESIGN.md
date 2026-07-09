@@ -58,6 +58,7 @@ DDL と RLS ポリシーは [supabase/schema.sql](../supabase/schema.sql) が正
 |---|---|---|---|
 | `id` | `uuid` | PK, `gen_random_uuid()` | |
 | `term` | `text` | NOT NULL | 見出し語（AI が正規化した表記） |
+| `reading` | `text` | NULL可 | 見出し語のよみがな（**ひらがな**）。50音順ソート（§5.2）に使用。生成時に AI が付与。Phase 7 より前に登録された行は NULL（ソート時は `term` にフォールバック）。 |
 | `definition` | `text` | NOT NULL | 詳細な定義・解説。**Markdown**。 |
 | `tags` | `text[]` | NOT NULL DEFAULT `'{}'` | ジャンルタグ。生成時に AI が3つ付与、管理者が辞書画面から追加・削除可能。 |
 | `source_url` | `text` | NULL可 | Web Share Target 経由で URL が渡された場合に保存 |
@@ -99,7 +100,11 @@ DDL と RLS ポリシーは [supabase/schema.sql](../supabase/schema.sql) が正
 | キー | 内容 |
 |---|---|
 | `lokipedia:gemini-api-key` | 管理者の Gemini API キー。設定画面から保存。**コードやリポジトリに含めない。** |
+| `lokipedia:theme` | テーマ選択 `'light' \| 'dark' \| 'loki'`（§5.5）。未設定時のデフォルトは `'loki'`。 |
+| `lokipedia:dictionary-sort` | 辞書一覧の並び順 `'latest' \| 'kana'`（§5.2）。未設定時は `'latest'`。 |
 | （supabase-js が自動管理） | Auth セッショントークン |
+
+localStorage の読み書きはすべて `src/lib/settings.ts` に集約する（キーごとに get/set 関数を追加）。
 
 ---
 
@@ -109,6 +114,7 @@ DDL と RLS ポリシーは [supabase/schema.sql](../supabase/schema.sql) が正
 interface Word {
   id: string;
   term: string;
+  reading: string | null;  // よみがな（ひらがな）。50音順ソート用。旧データは null
   definition: string;      // Markdown
   tags: string[];
   sourceUrl: string | null;
@@ -138,6 +144,7 @@ interface QuizHistoryEntry {
 // Gemini からの生成結果（保存前のプレビューに使う）
 interface GeneratedEntry {
   term: string;
+  reading: string;         // よみがな（ひらがな）
   definition: string;
   tags: string[];          // ちょうど3つ
   quiz: {
@@ -146,6 +153,12 @@ interface GeneratedEntry {
     correctIndex: 0 | 1 | 2 | 3;
     explanation: string;
   };
+}
+
+// 継続質問（§4.1 / §5.1）の会話履歴。メモリ上のみで永続化しない
+interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;            // Markdown
 }
 ```
 
@@ -161,10 +174,24 @@ interface GeneratedEntry {
 - `responseSchema` は §3 の `GeneratedEntry` と一致させる。
 - プロンプト要件:
   - 入力は「単語」「〜について教えて」のような文、または共有された URL/テキストのいずれもあり得る。**まず調べたい主題を特定して `term` に正規化**させる。
+  - `reading`: `term` のよみがなを**ひらがな**で（例: term「冪等性」→「べきとうせい」、英字語は日本語での読み「PWA」→「ぴーだぶりゅーえー」）。
   - `definition`: 日本語、Markdown、見出し・箇条書きを活用した詳細な解説。
   - `tags`: そのジャンルを表す日本語タグをちょうど3つ（例: 情報セキュリティ, ネットワーク, 国内, 芸能）。**既存タグとの表記揺れを防ぐため、生成リクエスト時に既存タグ一覧をプロンプトに含めて「該当があれば再利用せよ」と指示する。**
   - `quiz`: 応用情報技術者試験・午前試験風。問題文は知識の理解を問うもの、選択肢4つはもっともらしい誤答を含む、`explanation` は正解の根拠と誤答が誤りである理由まで述べる。
 - エラー処理: HTTP エラー・スキーマ不一致（choices が4つでない等）は例外を投げ、UI 側でメッセージ表示。**リトライは自動で行わない**（ユーザーが再実行）。
+
+### 4.1 継続質問（マルチターン・Phase 9）
+
+エントリ生成後、ユーザーは同じ入力欄から追加質問できる（§5.1）。このための関数を `gemini.ts` に追加する。
+
+- `generateFollowUp(history: ChatMessage[], apiKey: string): Promise<string>`
+  - `history` は user / model が交互に並ぶ会話履歴で、**末尾は必ず role: 'user'（今回の質問）**。
+  - リクエストの `contents` に `role` 付きで履歴をそのまま渡す（Gemini API のマルチターン形式）。
+  - 会話の最初の model ターンには、初回生成の JSON 全体ではなく **`definition` の Markdown テキスト**を入れる（トークン節約のため。クイズやタグは会話文脈に不要）。
+  - **`responseSchema` は使わない**。応答は自由な日本語 Markdown テキストで、`candidates[0].content.parts[0].text` を取り出してそのまま返す。
+  - システム指示（プロンプト先頭 or systemInstruction）: 「直前までの解説の文脈を踏まえ、日本語の Markdown で簡潔に回答せよ」。
+  - エラー処理は `generateEntry` と同方針（日本語メッセージ、**自動リトライしない**）。
+- 継続質問の内容は**辞書に保存しない**。会話はメモリ上のみ（リロードで消える）。
 
 ---
 
@@ -181,17 +208,47 @@ interface GeneratedEntry {
 | `/quiz` | クイズモード | 全員 |
 | `/settings` | 設定（管理者ログイン、Gemini キー保存） | 全員表示可（ログインフォームがあるため）|
 
-### 5.1 ホーム / 検索画面 (`/`)
-- 検索ワード入力欄 + タグ入力欄（チップ形式：Enter/カンマで確定、×で削除）。タグを手入力した場合は AI 生成タグより優先。
-- 「AIで生成」ボタン → ローディング表示 → **プレビューカード**（definition の Markdown レンダリング + クイズの全文）を表示。
-- プレビューで管理者は definition の再生成・タグ編集ができ、「辞書に登録」で Supabase へ保存。
-- 未ログイン時は生成ボタンを無効化し、理由を表示。
+### 5.1 ホーム / 検索・生成画面 (`/`) — チャット形式（Phase 8–9 で刷新）
+
+チャットボット（ChatGPT 等）ライクな1カラム構成。会話エリア + 下部固定のプロンプト入力欄。
+
+**入力欄（`src/components/ChatInput.tsx`）**
+- 自動リサイズする textarea（1行〜最大6行。それ以上は textarea 内スクロール）。角丸の枠内右下に送信ボタン（lucide `Send`）。
+- Enter は改行。送信は送信ボタン（デスクトップでは Ctrl/Cmd+Enter でも送信可）。
+- タブバーの上に固定配置（`position: fixed` + タブバー高さ分の bottom オフセット。会話エリア側に入力欄の高さ分の padding-bottom を確保）。
+- 未ログイン時・Gemini キー未設定時は入力欄を無効化し、理由と設定画面への導線を表示（従来仕様を踏襲）。
+- **生成前のタグ入力欄は廃止**（タグは生成結果の表示後に編集する。下記）。
+
+**初回送信 → エントリカード**
+- 最初の送信で `generateEntry()` を呼び、ローディング後、結果を**エントリカード**として会話エリアに表示する:
+  - `term`（見出し）+ タグ編集 UI + `definition` の Markdown レンダリング。
+  - **クイズは表示しない**。「4択クイズも1問生成済み（登録時に一緒に保存されます）」という注記のみ置く。
+  - タグ編集 UI: AI 生成タグを初期値としてチップ表示（× で削除）。**既存タグ一覧からタップで追加** + 自由入力（TagChipInput）の両方を提供。
+- 「再生成」ボタンはエントリカード上に置く（同じ入力で引き直し。継続質問中の会話は破棄される旨を注記）。
+
+**登録 / 更新の選択（Phase 8）**
+- 生成結果の `term` を正規化して既存 words と照合する（`src/lib/text.ts` の純粋関数 `normalizeTerm`: NFKC 正規化 + trim + 小文字化）。
+  - **一致なし** → 「辞書に登録」ボタン（従来どおり `createWordWithQuiz()`）。
+  - **一致あり** → 「『X』は登録済みです（YYYY/MM/DD 登録）」と表示し、2つのボタンを出す:
+    - **「既存の単語を更新」**: `updateWordWithQuiz(id, input)` — term / reading / definition / tags / updated_at を上書き。source_url は新しい値がある場合のみ上書き（null なら既存値を維持）。クイズは**追加**（既存クイズは削除しない。words:quizzes = 1:N の設計を活かす）。
+    - **「新規として登録」**: `createWordWithQuiz()`（同名の別項目として許容する）。
+  - 成功時はトースト（「登録しました」/「更新しました」）→ 単語詳細へ遷移。
+
+**継続質問（Phase 9）**
+- エントリカード表示後も入力欄は有効なまま。追加送信は `generateFollowUp()`（§4.1）を呼び、user の吹き出し / model の Markdown 吹き出しとして会話エリアに追記する。
+- 登録・更新ボタンはエントリカード上に残り続ける（継続質問後でも登録できる）。**継続質問の内容は辞書に保存されない**。
+- 会話はメモリ上のみ（state）。「新しく調べる」ボタンで会話を全クリアして初期状態に戻す。
+- `/add`（共有受け取り）からの `?q=` `?source_url=` の引き継ぎは従来どおり（入力欄に初期値として投入）。
 
 ### 5.2 辞書画面 (`/dictionary`, `/dictionary/:id`)
 - カードグリッド一覧（term, タグチップ, definition 冒頭の抜粋）。
 - 上部にタグフィルタ（登録済みタグ一覧から複数選択、AND 絞り込み）+ フリーテキスト絞り込み。
+- **並び替えトグル（Phase 10）**: セグメントコントロール「新着順（デフォルト） / 50音順」。
+  - 新着順: `createdAt` 降順（従来どおり）。
+  - 50音順: `Intl.Collator('ja')` で `reading ?? term` を比較して昇順。比較ロジックは `src/lib/wordSort.ts` の純粋関数に切り出す（vitest 対象）。
+  - 選択は `lokipedia:dictionary-sort`（§2.3）に保存し、次回訪問時も維持する。
 - 詳細画面: definition を Markdown レンダリング、タグ編集（管理者のみ表示）、この単語のクイズ一覧、**この端末での解答履歴**（正答率、直近の解答）。
-- 管理者のみ: 単語の削除、クイズの追加生成ボタン。
+- 管理者のみ: 単語の削除、クイズの追加生成ボタン、**reading（よみがな）の表示・編集**（Phase 10。reading が NULL の旧データをバックフィルする手段を兼ねる）。
 
 ### 5.3 クイズモード画面 (`/quiz`)
 - 開始前設定: タグ絞り込み（未選択なら全件）、出題数（5 / 10 / 全部）。
@@ -203,10 +260,54 @@ interface GeneratedEntry {
 - 管理者ログイン（メール + パスワード）/ ログアウト。ログイン状態を明示。
 - Gemini API キーの保存・削除（localStorage）。キーは伏字表示、「表示」トグル付き。
 - データ再同期ボタン（Supabase → IndexedDB の強制リフレッシュ）。
+- **テーマ選択（Phase 11）**: 「ライト / ダーク / ロキ」の3択（スウォッチ付きボタン）。選択は即時反映され、`lokipedia:theme`（§2.3）に保存される。全ユーザーが利用可（ログイン不要）。
+
+### 5.5 テーマシステム（Phase 11）
+
+[design/README.md](../design/README.md) のコンセプト「トリックスター(Loki)×知性」= **藍色（知性）× 琥珀色（悪戯・閃き）** をサイト全体に展開する。
+
+**仕組み**
+- `<html>` の `data-theme` 属性（`light` / `dark` / `loki`）で切り替える。デフォルトは **`loki`**。
+- `index.html` の `<head>` に、バンドル読み込み前に localStorage を読んで `data-theme` を設定するインラインスクリプトを置く（初期描画のテーマちらつき = FOUC を防ぐ）。
+- `src/hooks/useTheme.ts`: 現在テーマの取得・変更（`settings.ts` 経由で永続化 + `data-theme` 反映 + `<meta name="theme-color">` の更新）。
+- `src/index.css` にセマンティックトークンを CSS 変数で定義し、Tailwind v4 の `@theme inline` で utility 化する。**ページ・コンポーネントでは `slate-*` / `sky-*` 等の生パレット直書きを禁止**し、トークン utility のみ使う:
+
+```css
+:root[data-theme="light"] { --app-bg: #f8fafc; /* …下表… */ }
+:root[data-theme="dark"]  { --app-bg: #0f172a; }
+:root[data-theme="loki"]  { --app-bg: #1e1b4b; }
+
+@theme inline {
+  --color-app-bg: var(--app-bg);
+  --color-app-surface: var(--app-surface);
+  /* … トークンごとに1行 … */
+}
+/* 使用例: bg-app-bg text-app-text border-app-border bg-app-accent */
+```
+
+**トークンと各テーマの色値（この表が正。変更には管理者の承認が必要）**
+
+| トークン | 用途 | light | dark | loki |
+|---|---|---|---|---|
+| `app-bg` | ページ背景 | `#f8fafc` | `#0f172a` | `#1e1b4b` |
+| `app-surface` | カード・入力欄の背景 | `#ffffff` | `#1e293b` | `#312e81` |
+| `app-surface-2` | 一段沈んだ面（コードブロック背景等） | `#f1f5f9` | `#0f172a` | `#272364` |
+| `app-border` | 枠線 | `#e2e8f0` | `#334155` | `#4338ca` |
+| `app-text` | 本文 | `#0f172a` | `#f1f5f9` | `#eef2ff` |
+| `app-text-muted` | 補足テキスト | `#64748b` | `#94a3b8` | `#a5b4fc` |
+| `app-accent` | 主ボタン・アクティブタブ・リンク | `#4338ca` | `#818cf8` | `#f59e0b` |
+| `app-accent-hover` | accent のホバー/押下 | `#3730a3` | `#a5b4fc` | `#fbbf24` |
+| `app-on-accent` | accent 上の文字色 | `#ffffff` | `#1e1b4b` | `#1e1b4b` |
+| `app-success` | 正解・成功 | `#059669` | `#34d399` | `#34d399` |
+| `app-danger` | エラー・削除 | `#e11d48` | `#fb7185` | `#fb7185` |
+| `app-warning` | 注意・未設定警告 | `#d97706` | `#fbbf24` | `#fbbf24` |
+
+- PWA manifest（vite.config.ts）の `theme_color` / `background_color` はロキテーマ基調（`#1e1b4b`）に更新する。
 
 ### UI 共通
 - 下部固定のタブバー（モバイル前提）: ホーム / 辞書 / クイズ / 設定（lucide-react アイコン）。
-- 言語は日本語。ダーク/ライトは Tailwind の `prefers-color-scheme` 準拠（v1 ではトグル不要）。
+- 言語は日本語。テーマは §5.5 の3テーマ（設定画面で切替。デフォルトはロキ。`prefers-color-scheme` には追従しない）。
+- **モバイル表示（Phase 12）**: 全ページで**横スクロールを発生させない**（横スライドする UI は作らない）。はみ出しうる要素（Markdown 内のコードブロック・表・長い URL・長い見出し語）は、その要素自身を `overflow-x-auto`（カード内で閉じる）や `break-words` で処理する。**ルート要素への `overflow-x: hidden` で症状を隠すことは禁止**（原因を除去する）。基準ビューポート幅は 320px〜430px。
 
 ---
 
@@ -260,10 +361,12 @@ lokipedia/
 │   │   ├── supabase.ts    # supabase-js クライアント生成（env 読み込みはここだけ）
 │   │   ├── repository.ts  # データ層。snake_case↔camelCase 変換、Supabase/IndexedDB の使い分けを隠蔽
 │   │   ├── db.ts          # Dexie スキーマ（§2.2）
-│   │   ├── gemini.ts      # Gemini 呼び出し（§4）
-│   │   └── settings.ts    # localStorage アクセス集約
-│   ├── hooks/             # useAuth, useWords 等
-│   ├── components/        # 再利用 UI（TagChip, WordCard, QuizCard, MarkdownView 等）
+│   │   ├── gemini.ts      # Gemini 呼び出し（§4, §4.1）
+│   │   ├── settings.ts    # localStorage アクセス集約（§2.3）
+│   │   ├── text.ts        # テキスト系純粋関数（normalizeTerm 等）
+│   │   └── wordSort.ts    # 辞書ソートの純粋関数（§5.2, Phase 10）
+│   ├── hooks/             # useAuth, useTheme 等
+│   ├── components/        # 再利用 UI（TagChipInput, WordCard, MarkdownView, ChatInput 等）
 │   └── pages/
 │       ├── HomePage.tsx
 │       ├── SharePage.tsx      # /add

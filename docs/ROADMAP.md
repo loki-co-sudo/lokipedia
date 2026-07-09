@@ -118,6 +118,125 @@
 
 ---
 
+# v2 改善フェーズ（Phase 7〜12）
+
+管理者からの改善要望に基づく。仕様の正は更新済みの [DESIGN.md](DESIGN.md)（§2.1 `reading`、§2.3、§3、§4.1、§5.1、§5.2、§5.4、§5.5、UI 共通）。v1 と同じく**上から順に**実施し、先回り実装しない。
+
+---
+
+## Phase 7: データモデル拡張（`words.reading`）
+
+**ゴール**: 50音順ソート（Phase 10）の土台となる「よみがな」を、生成・保存の全経路が持ち運べる。
+
+- [ ] `supabase/schema.sql`: `words` に `reading text`（NULL可）を追加（新規セットアップ用 DDL に反映。RLS 変更なし）。
+- [x] **管理者への依頼**: 既存の Supabase プロジェクトの SQL Editor で `alter table public.words add column reading text;` を実行してもらう。**この ALTER が完了するまで本フェーズをデプロイしない**（`reading` 列への INSERT が失敗するため）。依頼文をフェーズ完了報告に含めること。
+- [ ] `src/types.ts`: `Word.reading: string | null`、`GeneratedEntry.reading: string` を追加（DESIGN.md §3 と一致させる）。
+- [ ] `src/lib/repository.ts`: `WordRow` に `reading` を追加し、`wordFromRow` / `createWordWithQuiz` の INSERT / 同期に反映。
+- [ ] `src/lib/gemini.ts`: `responseSchema`・プロンプト（DESIGN.md §4「reading はひらがな」）・型ガード `isGeneratedEntry` に `reading` を追加。
+- [ ] `src/lib/db.ts`: ストア定義はキー・インデックスのみのため **Dexie の version 上げは不要**なことを確認（`reading` はインデックスにしない）。
+- [ ] `src/pages/HomePage.tsx`: `createWordWithQuiz` へ `reading` を渡す（UI 変更はまだしない。Phase 8 の領分）。
+
+### 受け入れ条件
+- [ ] `npm run build` / `npm run test` / `npm run lint` が通る。
+- [ ] `reading` を欠いた Gemini 応答が型ガードで拒否され、日本語エラーになる（vitest または Node モックで確認）。
+- [ ] Playwright（API モック）で生成→登録した際、`words` への INSERT ボディに `reading` が含まれる。
+- [ ] `syncFromSupabase()` 後、IndexedDB の word に `reading` が入る（旧データの NULL は null のまま保持される）。
+
+---
+
+## Phase 8: ホーム画面の生成フロー刷新
+
+**ゴール**: チャット風入力・クイズ非表示のエントリカード・生成後のタグ編集・登録/更新の選択（DESIGN.md §5.1）。
+
+- [ ] `src/components/ChatInput.tsx`: 自動リサイズ textarea（1〜6行、以降は内部スクロール）+ 送信ボタン（lucide `Send`）。Enter は改行、送信はボタン（デスクトップは Ctrl/Cmd+Enter 可）。`disabled` 対応。
+- [ ] `src/pages/HomePage.tsx`: 検索 input を廃止し、タブバー上に固定した ChatInput に置換。会話エリアに入力欄の高さ分の padding-bottom を確保。
+- [ ] 生成前のタグ入力欄（TagChipInput）を撤去。
+- [ ] エントリカード: クイズの表示（question/choices/explanation のブロック）を撤去し、「4択クイズも1問生成済み（登録時に一緒に保存されます）」の注記に置換。**クイズの生成・保存自体は従来どおり行う。**
+- [ ] エントリカードのタグ編集: AI タグを初期値にしたチップ（×で削除）+ **既存タグ一覧からタップで追加** + 自由入力。
+- [ ] `src/lib/text.ts`: `normalizeTerm(s: string): string`（NFKC 正規化 + trim + 小文字化）を追加し vitest を書く。
+- [ ] `src/lib/repository.ts`:
+  - `findWordByTerm(term: string): Promise<Word | undefined>` — `listWords()` の結果を `normalizeTerm` で比較（オフラインフォールバックは listWords が既に担う）。
+  - `updateWordWithQuiz(id: string, input: CreateWordInput): Promise<Word>` — words を UPDATE（term / reading / definition / tags / updated_at。source_url は `input.sourceUrl` が非 null のときだけ上書き）+ quizzes に INSERT（既存クイズは削除しない）+ IndexedDB 更新。
+- [ ] 重複時 UI: 「『X』は登録済みです（登録日）」+「既存の単語を更新」「新規として登録」の2ボタン。更新成功時はトースト「更新しました」→ 詳細へ遷移。
+- [ ] `/add` からの `?q=` `?source_url=` 引き継ぎ、未ログイン/キー未設定時の無効化と理由表示を維持。
+
+### 受け入れ条件
+- [ ] `normalizeTerm` のユニットテスト（全角/半角・大文字小文字・前後空白の揺れが同一視される）が通る。
+- [ ] Playwright（モック）: 生成 → クイズが**表示されない**＆注記がある → タグ追加/削除 → 登録 → 詳細へ遷移。
+- [ ] Playwright（モック）: 既存 term と一致する語を生成 → 2ボタンが出る → 「更新」で words への UPDATE と quizzes への INSERT が飛び、既存クイズが残る（リクエスト検証）。「新規として登録」で従来の INSERT が飛ぶ。
+- [ ] 320px 幅で ChatInput・エントリカードがはみ出さない。
+
+---
+
+## Phase 9: 継続質問（チャット化）
+
+**ゴール**: AI の回答後、同じ入力欄から追加質問して会話を続けられる（DESIGN.md §4.1, §5.1）。
+
+- [ ] `src/types.ts`: `ChatMessage` を追加（DESIGN.md §3）。
+- [ ] `src/lib/gemini.ts`: `generateFollowUp(history: ChatMessage[], apiKey: string): Promise<string>`。`contents` に role 付き履歴、`responseSchema` なし、自動リトライなし、エラーは日本語（既存と同方針）。
+- [ ] `src/pages/HomePage.tsx`: 会話 state（`ChatMessage[]`。最初の model ターンは `definition` の Markdown）。エントリカードの下に user 吹き出し / model の Markdown 吹き出し（MarkdownView）を追記。継続質問の送信中はローディング表示。
+- [ ] 「新しく調べる」ボタン: 会話・エントリカードを全クリアして初期状態へ。
+- [ ] 「再生成」: 継続質問の履歴を破棄して初回入力で引き直す（破棄される旨を注記）。
+- [ ] 登録/更新ボタンはエントリカード上に残り、継続質問後も動作する。継続質問の内容は保存されない。
+
+### 受け入れ条件
+- [ ] Playwright（モック）: 生成 → 追加質問 → Markdown 回答が吹き出し表示 → さらに「辞書に登録」が正常動作。
+- [ ] 2回目の追加質問のリクエストボディに、それまでの会話履歴が role 付きで含まれる（リクエスト検証）。
+- [ ] 継続質問がエラーになっても会話とエントリカードは消えず、日本語エラーが表示される（自動リトライしない）。
+
+---
+
+## Phase 10: 辞書の並び替え（新着順 / 50音順）
+
+**ゴール**: 辞書一覧をデフォルト新着順・切替で50音順に並べられる（DESIGN.md §5.2）。
+
+- [ ] `src/lib/wordSort.ts`: `sortWordsByLatest(words)` / `sortWordsByKana(words)`（`Intl.Collator('ja')` で `reading ?? term` を比較）を純粋関数で実装 + vitest。
+- [ ] `src/lib/settings.ts`: `lokipedia:dictionary-sort`（`'latest' | 'kana'`）の get/set を追加。
+- [ ] `src/pages/DictionaryPage.tsx`: セグメントコントロール「新着順 / 50音順」。選択を永続化し、初期表示に反映。
+- [ ] `src/pages/WordDetailPage.tsx`（管理者のみ）: `reading` の表示・編集 UI。`src/lib/repository.ts` に `updateWordReading(id: string, reading: string): Promise<void>`（`updated_at` も更新、IndexedDB 反映）を追加。reading が NULL の旧データのバックフィル手段を兼ねる。
+
+### 受け入れ条件
+- [ ] ユニットテスト: ひらがな/カタカナ語の順序、`reading` を持つ漢字語が読みで整列すること、`reading` が null の語は `term` にフォールバックすること、英数字語を含めても順序が安定すること。
+- [ ] Playwright（モック）: 切替でカードの DOM 順が変わり、リロード後も選択が維持される。
+- [ ] reading 編集後、50音順の並びに反映される。
+
+---
+
+## Phase 11: テーマ刷新（ライト / ダーク / ロキ）
+
+**ゴール**: サイト全体をセマンティックトークンに載せ替え、設定画面で3テーマを切替できる（DESIGN.md §5.5。色値はこの表が正）。
+
+- [ ] `src/index.css`: `:root[data-theme="light|dark|loki"]` に §5.5 の表どおりの CSS 変数を定義し、`@theme inline` で `--color-app-*` にマッピング。
+- [ ] `index.html`: バンドル前に localStorage（`lokipedia:theme`、無ければ `'loki'`）を読んで `data-theme` を設定するインラインスクリプト（FOUC 防止）。
+- [ ] `src/lib/settings.ts`: `lokipedia:theme` の get/set。`src/hooks/useTheme.ts`: テーマ変更（`data-theme` 反映 + `<meta name="theme-color">` 更新 + 永続化）。
+- [ ] **全ページ・全コンポーネント**の色クラス直書き（`slate-*` `sky-*` `emerald-*` `rose-*` `amber-*` 等）を `app-*` トークン utility に置換。正解/エラー/警告も `app-success` / `app-danger` / `app-warning` へ。
+- [ ] `src/pages/SettingsPage.tsx`: 3テーマ選択 UI（スウォッチ付きボタン、即時反映、ログイン不要）。
+- [ ] `vite.config.ts`: manifest の `theme_color` / `background_color` を `#1e1b4b` に更新。
+
+### 受け入れ条件
+- [ ] 3テーマそれぞれで全6ルートを Playwright スクリーンショット確認し、文字が背景に埋もれない（特にロキテーマの amber ボタン上は `app-on-accent` の濃紺）。
+- [ ] リロード後・`npm run preview`（PWA）再起動後もテーマが維持され、初期描画で別テーマが一瞬見えない。
+- [ ] `grep -rE '(slate|sky|emerald|rose|amber|indigo)-[0-9]' src/pages src/components src/App.tsx` がヒット0件（例外を残す場合は理由コメント必須）。
+- [ ] `npm run build` / `npm run test` が通る。
+
+---
+
+## Phase 12: モバイル表示の総点検
+
+**ゴール**: 320〜430px のどの幅でも横スクロールが発生しない（DESIGN.md「UI 共通」）。
+
+- [ ] 長文・長い URL・コードブロック・表・長い見出し語を含むシードデータ（モック）を用意し、全6ルートを 320 / 375 / 430px で監査。
+- [ ] `src/components/MarkdownView.tsx`: `pre` / `table` を `overflow-x-auto` のラッパで包む（カード内で横スクロールを閉じる）、`img` に `max-w-full`、長い語・URL に `break-words`。
+- [ ] 見出し語・タグチップ・パンくず等の折り返し、flex/grid 子要素の `min-w-0`、ChatInput の幅の確認と修正。
+- [ ] ルート要素への `overflow-x: hidden` による隠蔽をしていないことを確認（原因除去で対応）。
+
+### 受け入れ条件
+- [ ] Playwright: 各ルート × 各幅（320/375/430px）で `document.documentElement.scrollWidth <= window.innerWidth` が成立する（シードデータ表示状態で検証）。
+- [ ] コードブロック・表はカード内スクロールで全内容にアクセスできる。
+- [ ] `npm run build` が通る。管理者に実機（Android）での最終確認を依頼。
+
+---
+
 ## 実装エージェントへの共通指示（要約 — 詳細は CLAUDE.md）
 
 1. **DESIGN.md が正**。矛盾に気づいたら実装を曲げるのではなく、管理者に確認して DESIGN.md を直す。
