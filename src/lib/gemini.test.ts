@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ANSWER_MODE_INSTRUCTIONS } from './answerMode'
-import { generateFollowUp, isGeneratedEntry } from './gemini'
+import { generateEntryFromConversation, generateFollowUp, isGeneratedEntry } from './gemini'
 
 function validEntry() {
   return {
@@ -88,5 +88,36 @@ describe('generateFollowUp', () => {
     await expect(
       generateFollowUp([{ role: 'user', text: '質問' }], 'dummy-key', 'standard'),
     ).rejects.toThrow('Gemini APIの呼び出しに失敗しました')
+  })
+})
+
+describe('generateEntryFromConversation', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('会話全文をプロンプトに含め、responseSchema 付きで構造化エントリを受け取る', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: JSON.stringify(validEntry()) }] } }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const history = [
+      { role: 'model' as const, text: '初回のdefinition' },
+      { role: 'user' as const, text: 'Service Workerって何？' },
+      { role: 'model' as const, text: 'Service Workerとは...' },
+    ]
+    const result = await generateEntryFromConversation(history, 'dummy-key', ['ウェブ'], 'standard')
+
+    expect(result.term).toBe('PWA')
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    const prompt = body.contents[0].parts[0].text
+    expect(prompt).toContain('ユーザー: Service Workerって何？')
+    expect(prompt).toContain('AI: Service Workerとは...')
+    expect(prompt).toContain('既存タグ一覧: ウェブ')
+    expect(body.generationConfig.responseSchema).toBeDefined()
   })
 })

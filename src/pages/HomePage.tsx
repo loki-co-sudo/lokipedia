@@ -1,41 +1,61 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
-import { RefreshCw, Sparkles, Trash2 } from 'lucide-react'
+import { BookPlus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
 import ChatBubble from '../components/ChatBubble'
 import ChatInput from '../components/ChatInput'
-import TagChipInput from '../components/TagChipInput'
-import TagToggleList from '../components/TagToggleList'
-import MarkdownView from '../components/MarkdownView'
+import GeneratedEntryCard from '../components/GeneratedEntryCard'
 import Toast from '../components/Toast'
 import { useAuth } from '../hooks/useAuth'
+import { useChatSession } from '../hooks/useChatSession'
 import { getAnswerMode, getGeminiApiKey } from '../lib/settings'
-import { ANSWER_MODE_LABELS, type AnswerMode } from '../lib/answerMode'
-import { generateEntry, generateFollowUp } from '../lib/gemini'
+import { ANSWER_MODE_LABELS } from '../lib/answerMode'
+import { generateEntry, generateEntryFromConversation, generateFollowUp } from '../lib/gemini'
 import { createWordWithQuiz, findWordByTerm, listWords, updateWordWithQuiz } from '../lib/repository'
 import type { ChatMessage, GeneratedEntry, Word } from '../types'
+
+/** 継続質問の回答から作成中の辞書エントリ（登録カードの状態） */
+interface FollowUpDraft {
+  /** 対象の model 回答の conversation 内 index */
+  messageIndex: number
+  entry: GeneratedEntry
+  tags: string[]
+  duplicate: Word | null
+}
 
 /**
  * ホーム / 検索・生成画面（docs/DESIGN.md §5.1）— チャット風入力・エントリカード・継続質問。
  * /add（共有受け取り）から ?q= ?source_url= で検索ワード・URLが引き継がれる。
+ * 会話の状態は ChatSessionProvider が保持し、ページ遷移をまたいで維持される。
  */
 export default function HomePage() {
   const [searchParams] = useSearchParams()
   const { isAdmin, loading: authLoading } = useAuth()
 
+  const {
+    lastQuery,
+    setLastQuery,
+    sourceUrl,
+    setSourceUrl,
+    entry,
+    setEntry,
+    entryTags,
+    setEntryTags,
+    duplicate,
+    setDuplicate,
+    conversation,
+    setConversation,
+    conversationMode,
+    setConversationMode,
+    reset: resetSession,
+  } = useChatSession()
+
   const [input, setInput] = useState(searchParams.get('q') ?? '')
-  const [lastQuery, setLastQuery] = useState('')
-  const [sourceUrl] = useState(searchParams.get('source_url'))
   const [existingTags, setExistingTags] = useState<string[]>([])
 
-  const [entry, setEntry] = useState<GeneratedEntry | null>(null)
-  const [entryTags, setEntryTags] = useState<string[]>([])
-  const [duplicate, setDuplicate] = useState<Word | null>(null)
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
 
-  // 会話履歴（Gemini に渡す全文脈）。index 0 は非表示の初回 definition ターン。
-  const [conversation, setConversation] = useState<ChatMessage[]>([])
   const [followUpLoading, setFollowUpLoading] = useState(false)
   const [followUpError, setFollowUpError] = useState<string | null>(null)
 
@@ -43,11 +63,14 @@ export default function HomePage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
-  const [chatInputHeight, setChatInputHeight] = useState(0)
+  // 継続質問の回答からの辞書登録（同時に開けるカードは1つ）
+  const [followUpDraft, setFollowUpDraft] = useState<FollowUpDraft | null>(null)
+  const [draftLoadingIndex, setDraftLoadingIndex] = useState<number | null>(null)
+  const [draftError, setDraftError] = useState<string | null>(null)
+  const [draftSaving, setDraftSaving] = useState(false)
+  const [draftSaveError, setDraftSaveError] = useState<string | null>(null)
 
-  // この会話に固定された回答モード。生成開始時の設定値を保持し、途中で設定を変えても
-  // 会話の口調が混ざらないようにする（docs/DESIGN.md §4.2）。
-  const [conversationMode, setConversationMode] = useState<AnswerMode | null>(null)
+  const [chatInputHeight, setChatInputHeight] = useState(0)
 
   const geminiKey = getGeminiApiKey()
 
@@ -61,6 +84,12 @@ export default function HomePage() {
       .catch((e) => console.error('[HomePage] 既存タグの取得に失敗しました', e))
   }, [])
 
+  // /add からの出典URLをセッションに引き継ぐ（クエリなしの再訪問では既存値を保持）
+  const sourceUrlParam = searchParams.get('source_url')
+  useEffect(() => {
+    if (sourceUrlParam) setSourceUrl(sourceUrlParam)
+  }, [sourceUrlParam, setSourceUrl])
+
   async function handleGenerate(query: string) {
     setLastQuery(query)
     setGenerating(true)
@@ -69,6 +98,7 @@ export default function HomePage() {
     try {
       const key = getGeminiApiKey()
       if (!key) throw new Error('Gemini APIキーが設定されていません。設定画面で登録してください。')
+      // 回答モードは生成開始時の設定値を会話に固定する（docs/DESIGN.md §4.2）
       const mode = getAnswerMode()
       setConversationMode(mode)
       const result = await generateEntry(query, key, existingTags, mode)
@@ -123,20 +153,17 @@ export default function HomePage() {
     setConversation([])
     setFollowUpError(null)
     setDuplicate(null)
+    closeDraft()
     await handleGenerate(lastQuery)
   }
 
   function handleReset() {
-    setEntry(null)
-    setEntryTags([])
-    setDuplicate(null)
-    setConversation([])
-    setConversationMode(null)
+    resetSession()
     setInput('')
-    setLastQuery('')
     setGenError(null)
     setSaveError(null)
     setFollowUpError(null)
+    closeDraft()
   }
 
   async function handleRegister() {
@@ -181,6 +208,60 @@ export default function HomePage() {
       setSaveError(e instanceof Error ? e.message : '更新に失敗しました。')
     } finally {
       setSaving(false)
+    }
+  }
+
+  /** 継続質問の回答（messageIndex）から辞書エントリを生成して登録カードを開く */
+  async function handleOpenDraft(messageIndex: number) {
+    const key = getGeminiApiKey()
+    if (!key) {
+      setDraftError('Gemini APIキーが設定されていません。設定画面で登録してください。')
+      return
+    }
+    setDraftLoadingIndex(messageIndex)
+    setDraftError(null)
+    setFollowUpDraft(null)
+    try {
+      const history = conversation.slice(0, messageIndex + 1)
+      const result = await generateEntryFromConversation(history, key, existingTags, conversationMode ?? getAnswerMode())
+      const existing = await findWordByTerm(result.term)
+      setFollowUpDraft({ messageIndex, entry: result, tags: result.tags, duplicate: existing ?? null })
+    } catch (e) {
+      setDraftError(e instanceof Error ? e.message : 'エントリの生成に失敗しました。')
+    } finally {
+      setDraftLoadingIndex(null)
+    }
+  }
+
+  function closeDraft() {
+    setFollowUpDraft(null)
+    setDraftError(null)
+    setDraftSaveError(null)
+  }
+
+  async function handleDraftSave(asUpdate: boolean) {
+    if (!followUpDraft) return
+    setDraftSaving(true)
+    setDraftSaveError(null)
+    try {
+      const inputData = {
+        term: followUpDraft.entry.term,
+        reading: followUpDraft.entry.reading,
+        definition: followUpDraft.entry.definition,
+        tags: followUpDraft.tags,
+        sourceUrl: null,
+        quiz: followUpDraft.entry.quiz,
+      }
+      const word =
+        asUpdate && followUpDraft.duplicate
+          ? await updateWordWithQuiz(followUpDraft.duplicate.id, inputData)
+          : await createWordWithQuiz(inputData)
+      setToast(asUpdate ? '更新しました' : '辞書に登録しました')
+      setFollowUpDraft({ ...followUpDraft, duplicate: word })
+    } catch (e) {
+      setDraftSaveError(e instanceof Error ? e.message : '登録に失敗しました。')
+    } finally {
+      setDraftSaving(false)
     }
   }
 
@@ -232,69 +313,17 @@ export default function HomePage() {
 
       {entry && (
         <div className="space-y-4 rounded-xl border border-app-border bg-app-surface p-4">
-          <div>
-            <h2 className="text-xl font-bold break-words">{entry.term}</h2>
-            <div className="mt-2 space-y-2">
-              <TagChipInput value={entryTags} onChange={setEntryTags} placeholder="タグ" />
-              {existingTags.length > 0 && (
-                <div>
-                  <p className="mb-1 text-xs font-semibold text-app-text-muted">既存タグから追加</p>
-                  <TagToggleList
-                    tags={existingTags}
-                    selected={entryTags}
-                    onToggle={(tag) =>
-                      setEntryTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          <MarkdownView>{entry.definition}</MarkdownView>
-
-          <p className="rounded-lg bg-app-surface-2 px-3 py-2 text-xs text-app-text-muted">
-            4択クイズも1問生成済みです（登録時に一緒に保存されます）。
-          </p>
-
-          {saveError && <p className="text-sm text-app-danger">{saveError}</p>}
-
-          {duplicate ? (
-            <div className="space-y-2">
-              <p className="text-sm text-app-text-muted">
-                『{duplicate.term}』は登録済みです（{new Date(duplicate.createdAt).toLocaleDateString('ja-JP')} 登録）
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => void handleUpdate()}
-                  disabled={saving}
-                  className="flex-1 rounded-xl bg-app-accent px-4 py-3 font-semibold text-app-on-accent disabled:opacity-40"
-                >
-                  {saving ? '更新中...' : '既存の単語を更新'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleRegister()}
-                  disabled={saving}
-                  className="flex-1 rounded-xl border border-app-border px-4 py-3 font-semibold text-app-text disabled:opacity-40"
-                >
-                  {saving ? '登録中...' : '新規として登録'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => void handleRegister()}
-                disabled={saving}
-                className="flex-1 rounded-xl bg-app-accent px-4 py-3 font-semibold text-app-on-accent disabled:opacity-40"
-              >
-                {saving ? '登録中...' : '辞書に登録'}
-              </button>
-            </div>
-          )}
+          <GeneratedEntryCard
+            entry={entry}
+            tags={entryTags}
+            onTagsChange={setEntryTags}
+            existingTags={existingTags}
+            duplicate={duplicate}
+            saving={saving}
+            saveError={saveError}
+            onRegister={() => void handleRegister()}
+            onUpdate={() => void handleUpdate()}
+          />
 
           <div className="flex gap-2">
             <button
@@ -319,9 +348,56 @@ export default function HomePage() {
 
           {conversation.length > 1 && (
             <div className="space-y-3 border-t border-app-border pt-4">
-              {conversation.slice(1).map((msg, i) => (
-                <ChatBubble key={i} role={msg.role} text={msg.text} />
-              ))}
+              {conversation.slice(1).map((msg, i) => {
+                const messageIndex = i + 1
+                return (
+                  <div key={messageIndex} className="space-y-2">
+                    <ChatBubble role={msg.role} text={msg.text} />
+                    {msg.role === 'model' &&
+                      isAdmin &&
+                      geminiKey &&
+                      (followUpDraft?.messageIndex === messageIndex ? (
+                        <div className="space-y-4 rounded-xl border border-app-border bg-app-bg p-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-semibold text-app-text-muted">この回答から辞書エントリを作成</p>
+                            <button
+                              type="button"
+                              onClick={closeDraft}
+                              aria-label="登録カードを閉じる"
+                              className="shrink-0 p-1 text-app-text-muted"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <GeneratedEntryCard
+                            entry={followUpDraft.entry}
+                            tags={followUpDraft.tags}
+                            onTagsChange={(tags) => setFollowUpDraft((d) => (d ? { ...d, tags } : d))}
+                            existingTags={existingTags}
+                            duplicate={followUpDraft.duplicate}
+                            saving={draftSaving}
+                            saveError={draftSaveError}
+                            onRegister={() => void handleDraftSave(false)}
+                            onUpdate={() => void handleDraftSave(true)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex justify-start">
+                          <button
+                            type="button"
+                            onClick={() => void handleOpenDraft(messageIndex)}
+                            disabled={draftLoadingIndex !== null}
+                            className="flex items-center gap-1 rounded-full border border-app-border px-3 py-1 text-xs font-medium text-app-text-muted disabled:opacity-40"
+                          >
+                            <BookPlus className="h-3.5 w-3.5" />
+                            {draftLoadingIndex === messageIndex ? 'エントリ生成中...' : 'この回答を辞書に登録'}
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                )
+              })}
+              {draftError && <p className="text-sm text-app-danger">{draftError}</p>}
             </div>
           )}
 

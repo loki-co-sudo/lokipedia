@@ -28,15 +28,9 @@ const responseSchema = {
   required: ['term', 'reading', 'definition', 'tags', 'quiz'],
 } as const
 
-function buildPrompt(input: string, existingTags: string[], mode: AnswerMode): string {
+function entryRequirements(existingTags: string[], mode: AnswerMode): string {
   const existingTagsText = existingTags.length > 0 ? existingTags.join('、') : '（まだ登録されているタグはありません）'
-  return `あなたは日本語の学習支援AIです。以下の入力から調べたい主題を特定し、共有辞書用のエントリを1件生成してください。
-入力は単語そのものの場合も、「〜について教えて」のような文の場合も、URLやテキストの場合もあります。
-
-# 入力
-${input}
-
-# 出力要件
+  return `# 出力要件
 - term: 調べたい主題を正規化した見出し語（日本語）。
 - reading: term のよみがなを**ひらがな**で（例: term「冪等性」→「べきとうせい」、英字語は日本語での読み「PWA」→「ぴーだぶりゅーえー」）。
 - definition: term について Markdown 形式で日本語の詳細な解説。見出し(##)や箇条書きを活用する。文体・深さは下記「回答モード」に従う。
@@ -51,6 +45,27 @@ ${input}
 # 回答モード（definition と quiz.explanation の文体にのみ適用する。term / reading / tags / question / choices は中立のまま）
 ${ANSWER_MODE_INSTRUCTIONS[mode]}
 `
+}
+
+function buildPrompt(input: string, existingTags: string[], mode: AnswerMode): string {
+  return `あなたは日本語の学習支援AIです。以下の入力から調べたい主題を特定し、共有辞書用のエントリを1件生成してください。
+入力は単語そのものの場合も、「〜について教えて」のような文の場合も、URLやテキストの場合もあります。
+
+# 入力
+${input}
+
+${entryRequirements(existingTags, mode)}`
+}
+
+function buildConversationEntryPrompt(history: ChatMessage[], existingTags: string[], mode: AnswerMode): string {
+  const transcript = history.map((m) => `${m.role === 'user' ? 'ユーザー' : 'AI'}: ${m.text}`).join('\n\n')
+  return `あなたは日本語の学習支援AIです。以下はユーザーとAIの会話です。会話の**最後の質問とその回答**で扱われた主題を特定し、共有辞書用のエントリを1件生成してください。
+definition は最後の回答の内容を核にしつつ、この会話を読んでいない人でも単体で理解できる解説に再構成してください。
+
+# 会話
+${transcript}
+
+${entryRequirements(existingTags, mode)}`
 }
 
 function isChoiceIndex(value: unknown): value is ChoiceIndex {
@@ -89,13 +104,30 @@ export async function generateEntry(
   existingTags: string[],
   mode: AnswerMode,
 ): Promise<GeneratedEntry> {
+  return requestGeneratedEntry(buildPrompt(input, existingTags, mode), apiKey)
+}
+
+/**
+ * 継続質問の回答から辞書エントリを生成する（docs/DESIGN.md §4.3）。
+ * history は会話の先頭から対象の model 回答までを渡す（末尾が対象の回答）。
+ */
+export async function generateEntryFromConversation(
+  history: ChatMessage[],
+  apiKey: string,
+  existingTags: string[],
+  mode: AnswerMode,
+): Promise<GeneratedEntry> {
+  return requestGeneratedEntry(buildConversationEntryPrompt(history, existingTags, mode), apiKey)
+}
+
+async function requestGeneratedEntry(promptText: string, apiKey: string): Promise<GeneratedEntry> {
   let response: Response
   try {
     response = await fetch(`${ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: buildPrompt(input, existingTags, mode) }] }],
+        contents: [{ parts: [{ text: promptText }] }],
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema,

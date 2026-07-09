@@ -192,7 +192,7 @@ interface ChatMessage {
   - **`responseSchema` は使わない**。応答は自由な日本語 Markdown テキストで、`candidates[0].content.parts[0].text` を取り出してそのまま返す。
   - システム指示（プロンプト先頭 or systemInstruction）: 「直前までの解説の文脈を踏まえ、日本語の Markdown で簡潔に回答せよ」。
   - エラー処理は `generateEntry` と同方針（日本語メッセージ、**自動リトライしない**）。
-- 継続質問の内容は**辞書に保存しない**。会話はメモリ上のみ（リロードで消える）。
+- 会話はメモリ上のみ（リロードで消える）が、**ページ遷移をまたいで保持する**（§5.1 の ChatSessionProvider）。
 
 ### 4.2 回答モード（文体切り替え）
 
@@ -210,6 +210,13 @@ interface ChatMessage {
 - `generateFollowUp(history, apiKey, mode)`: systemInstruction に文体指示を追記する。
 - 選択 UI は設定画面（§5.4）。選択は `lokipedia:answer-mode`（§2.3）に保存し、次回以降も維持する。
 - **モードは会話ごとに固定する**: 初回生成時の設定値を会話に紐付け、継続質問はすべてそのモードで回答する（履歴に旧モードの回答が残った状態で文体指示だけ変えると口調が混ざるため）。設定変更が反映されるのは次の会話（「新しく調べる」/「会話をリセット」後）または「再生成」から。
+
+### 4.3 継続質問の回答からの辞書登録
+
+- `generateEntryFromConversation(history: ChatMessage[], apiKey: string, existingTags: string[], mode: AnswerMode): Promise<GeneratedEntry>`
+  - `history` は会話の先頭から対象の model 回答まで（末尾が対象の回答）。
+  - 会話の**最後の質問とその回答**の主題から辞書エントリ1件を構造化生成する。definition は会話を読んでいない人でも単体で理解できるよう再構成させる。
+  - 出力要件・`responseSchema`・エラー処理は `generateEntry` と共通（§4）。回答モードは会話に固定されたものを使う。
 
 ---
 
@@ -257,8 +264,9 @@ interface ChatMessage {
 
 **継続質問（Phase 9）**
 - エントリカード表示後も入力欄は有効なまま。追加送信は `generateFollowUp()`（§4.1）を呼び、user の吹き出し / model の Markdown 吹き出しとして会話エリアに追記する。
-- 登録・更新ボタンはエントリカード上に残り続ける（継続質問後でも登録できる）。**継続質問の内容は辞書に保存されない**。
-- 会話はメモリ上のみ（state）。「新しく調べる」ボタンで会話を全クリアして初期状態に戻す。
+- 登録・更新ボタンはエントリカード上に残り続ける（継続質問後でも登録できる）。
+- **継続質問の回答からの辞書登録**: 各 model 回答の吹き出しの下に「この回答を辞書に登録」ボタン（管理者のみ）。押すと `generateEntryFromConversation()`（§4.3）で構造化エントリを生成し、初回と同じ登録カード（GeneratedEntryCard: タグ編集・重複チェック・登録/更新）を吹き出しの直下に開く（×で閉じる。同時に開けるカードは1つ）。
+- **会話はページ遷移をまたいで保持する**（ChatSessionProvider が App 直下で state を保持）。「新しく調べる」/「会話をリセット」で破棄され、リロードでは消える（メモリ上のみ）。
 - `/add`（共有受け取り）からの `?q=` `?source_url=` の引き継ぎは従来どおり（入力欄に初期値として投入）。
 
 ### 5.2 辞書画面 (`/dictionary`, `/dictionary/:id`)
