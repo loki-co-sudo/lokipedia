@@ -99,15 +99,15 @@
 
 **ゴール**: インストール可能・オフライン動作・共有ボタンから登録画面へ。
 
-- [ ] manifest 完成: 名前、`display: standalone`、テーマカラー、192/512 アイコン（maskable 含む。仮アイコンで良いが用意する）。
-- [ ] `share_target` 設定（DESIGN.md §6 の JSON どおり。GET / `/add`）。
-- [ ] `/add`（SharePage）: `?title=&text=&url=` を解釈。URL のみ共有された場合は url を、テキストの場合は text を検索入力として `/` に引き継ぐ（`source_url` に url を保持）。
-- [ ] オフライン検証: ビルド後 `npm run preview` で Service Worker を有効にし、DevTools オフラインで辞書閲覧・クイズが動くこと。
-- [ ] オンライン復帰時の自動再同期（`window` の `online` イベントで `syncFromSupabase()`）。
+- [x] manifest 完成: 名前、`display: standalone`、テーマカラー、192/512 アイコン（maskable 含む。仮アイコンで良いが用意する）。ImageMagick で `public/icon-192.png` / `icon-512.png` / `icon-512-maskable.png` を生成（sky-500 背景 + 白 "L"。maskable はセーフゾーンに収まるよう縮小）。`index.html` に favicon / apple-touch-icon リンクも追加。
+- [x] `share_target` 設定（DESIGN.md §6 の JSON どおり。GET / `/add`）。Phase 0 のスキャフォールドで設定済みだったものを維持。
+- [x] `/add`（SharePage）: `?title=&text=&url=` を解釈。URL のみ共有された場合は url を、テキストの場合は text を検索入力として `/` に引き継ぐ（`source_url` に url を保持）。
+- [x] オフライン検証: ビルド後 `npm run preview` で Service Worker を有効にし、DevTools オフラインで辞書閲覧・クイズが動くこと。
+- [x] オンライン復帰時の自動再同期（`window` の `online` イベントで `syncFromSupabase()`）。
 
 ### 受け入れ条件
-- Lighthouse PWA チェック（installable）を満たす。
-- Android 実機で「共有」→ lokipedia を選択 → 検索欄にテキストが入ることを管理者が確認（エージェントは `/add?text=...` の直接アクセスで代替確認まで）。
+- [ ] Lighthouse PWA チェック（installable）を満たす。**管理者への依頼**: この環境に Lighthouse CLI が無く、一度限りの監査ツールのため管理者確認なしに新規追加しなかった。代わりに Lighthouse が見る主要項目（manifest の name/icons(192・512・maskable)/display:standalone/start_url、Service Worker の登録と fetch ハンドラ、オフライン動作）を Playwright で手動確認済み。本番URL（Vercel、Phase 6）での Lighthouse 実行を依頼したい。
+- [x] Android 実機で「共有」→ lokipedia を選択 → 検索欄にテキストが入ることを管理者が確認（エージェントは `/add?text=...&url=...` の直接アクセスで代替確認まで）。Playwright で `/add` に text+url、url単体の両パターンでアクセスし、検索欄への引き継ぎと source_url の伝播を確認。**管理者への依頼**: Android実機での実際の共有動作の確認をお願いします。
 
 ---
 

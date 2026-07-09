@@ -10,6 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      includeAssets: ['icon-192.png', 'icon-512.png', 'icon-512-maskable.png'],
       manifest: {
         name: 'lokipedia',
         short_name: 'lokipedia',
@@ -19,8 +20,11 @@ export default defineConfig({
         start_url: '/',
         theme_color: '#0ea5e9',
         background_color: '#f8fafc',
-        // アイコンは Phase 5 で public/ に追加する（docs/ROADMAP.md 参照）
-        icons: [],
+        icons: [
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
         // スマホの共有ボタン → /add に title/text/url が渡る（インストール済み PWA のみ有効）
         share_target: {
           action: '/add',

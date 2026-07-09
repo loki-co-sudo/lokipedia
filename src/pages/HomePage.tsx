@@ -21,6 +21,7 @@ export default function HomePage() {
   const { isAdmin, loading: authLoading } = useAuth()
 
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
+  const [sourceUrl] = useState(searchParams.get('source_url'))
   const [manualTags, setManualTags] = useState<string[]>([])
   const [existingTags, setExistingTags] = useState<string[]>([])
 
@@ -73,7 +74,7 @@ export default function HomePage() {
         term: preview.term,
         definition: preview.definition,
         tags: previewTags,
-        sourceUrl: null,
+        sourceUrl,
         quiz: preview.quiz,
       })
       setToast('辞書に登録しました')

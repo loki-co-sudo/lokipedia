@@ -21,10 +21,19 @@ export default function App() {
   // アプリ起動時に Supabase → IndexedDB の全件同期を行う（docs/DESIGN.md §2.2）。
   // オフラインや未設定時は静かに諦め、読み取りは IndexedDB キャッシュにフォールバックする。
   useEffect(() => {
-    if (supabaseConfigError || !navigator.onLine) return
-    syncFromSupabase().catch((err) => {
-      console.error('[App] 初回同期に失敗しました', err)
-    })
+    if (supabaseConfigError) return
+
+    function sync() {
+      syncFromSupabase().catch((err) => {
+        console.error('[App] 同期に失敗しました', err)
+      })
+    }
+
+    if (navigator.onLine) sync()
+
+    // オンライン復帰時にも再同期する（docs/DESIGN.md §6）。
+    window.addEventListener('online', sync)
+    return () => window.removeEventListener('online', sync)
   }, [])
 
   if (supabaseConfigError) {
