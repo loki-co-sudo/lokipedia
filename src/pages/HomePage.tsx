@@ -1,38 +1,42 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
-import { RefreshCw, Sparkles } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
+import ChatInput from '../components/ChatInput'
 import TagChipInput from '../components/TagChipInput'
+import TagToggleList from '../components/TagToggleList'
 import MarkdownView from '../components/MarkdownView'
 import Toast from '../components/Toast'
 import { useAuth } from '../hooks/useAuth'
 import { getGeminiApiKey } from '../lib/settings'
 import { generateEntry } from '../lib/gemini'
-import { createWordWithQuiz, listWords } from '../lib/repository'
-import type { GeneratedEntry } from '../types'
+import { createWordWithQuiz, findWordByTerm, listWords, updateWordWithQuiz } from '../lib/repository'
+import type { GeneratedEntry, Word } from '../types'
 
 /**
- * ホーム / 検索・生成画面（docs/DESIGN.md §5.1）
- * /add（共有受け取り）から ?q= で検索ワードが引き継がれる。
+ * ホーム / 検索・生成画面（docs/DESIGN.md §5.1）— チャット風入力・エントリカード。
+ * /add（共有受け取り）から ?q= ?source_url= で検索ワード・URLが引き継がれる。
  */
 export default function HomePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { isAdmin, loading: authLoading } = useAuth()
 
-  const [query, setQuery] = useState(searchParams.get('q') ?? '')
+  const [input, setInput] = useState(searchParams.get('q') ?? '')
   const [sourceUrl] = useState(searchParams.get('source_url'))
-  const [manualTags, setManualTags] = useState<string[]>([])
   const [existingTags, setExistingTags] = useState<string[]>([])
 
-  const [preview, setPreview] = useState<GeneratedEntry | null>(null)
-  const [previewTags, setPreviewTags] = useState<string[]>([])
+  const [entry, setEntry] = useState<GeneratedEntry | null>(null)
+  const [entryTags, setEntryTags] = useState<string[]>([])
+  const [duplicate, setDuplicate] = useState<Word | null>(null)
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
 
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+
+  const [chatInputHeight, setChatInputHeight] = useState(0)
 
   const geminiKey = getGeminiApiKey()
 
@@ -46,37 +50,41 @@ export default function HomePage() {
       .catch((e) => console.error('[HomePage] 既存タグの取得に失敗しました', e))
   }, [])
 
-  async function handleGenerate() {
-    if (query.trim() === '') return
+  async function handleSend() {
+    const trimmed = input.trim()
+    if (trimmed === '') return
     setGenerating(true)
     setGenError(null)
     setSaveError(null)
     try {
       const key = getGeminiApiKey()
       if (!key) throw new Error('Gemini APIキーが設定されていません。設定画面で登録してください。')
-      const result = await generateEntry(query.trim(), key, existingTags)
-      setPreview(result)
-      setPreviewTags(manualTags.length > 0 ? manualTags : result.tags)
+      const result = await generateEntry(trimmed, key, existingTags)
+      setEntry(result)
+      setEntryTags(result.tags)
+      const existing = await findWordByTerm(result.term)
+      setDuplicate(existing ?? null)
     } catch (e) {
       setGenError(e instanceof Error ? e.message : 'AI生成に失敗しました。')
-      setPreview(null)
+      setEntry(null)
+      setDuplicate(null)
     } finally {
       setGenerating(false)
     }
   }
 
   async function handleRegister() {
-    if (!preview) return
+    if (!entry) return
     setSaving(true)
     setSaveError(null)
     try {
       const word = await createWordWithQuiz({
-        term: preview.term,
-        reading: preview.reading,
-        definition: preview.definition,
-        tags: previewTags,
+        term: entry.term,
+        reading: entry.reading,
+        definition: entry.definition,
+        tags: entryTags,
         sourceUrl,
-        quiz: preview.quiz,
+        quiz: entry.quiz,
       })
       setToast('辞書に登録しました')
       setTimeout(() => navigate(`/dictionary/${word.id}`), 900)
@@ -87,108 +95,154 @@ export default function HomePage() {
     }
   }
 
-  const generateDisabled = authLoading || !isAdmin || !geminiKey || query.trim() === '' || generating
+  async function handleUpdate() {
+    if (!entry || !duplicate) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const word = await updateWordWithQuiz(duplicate.id, {
+        term: entry.term,
+        reading: entry.reading,
+        definition: entry.definition,
+        tags: entryTags,
+        sourceUrl,
+        quiz: entry.quiz,
+      })
+      setToast('更新しました')
+      setTimeout(() => navigate(`/dictionary/${word.id}`), 900)
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : '更新に失敗しました。')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleChatInputHeightChange = useCallback((height: number) => setChatInputHeight(height), [])
+
+  const geminiDisabledReason = authLoading
+    ? null
+    : !isAdmin
+      ? '管理者のみ利用できます。設定画面からログインしてください。'
+      : !geminiKey
+        ? 'Gemini APIキーが未設定です。'
+        : null
+
+  const inputDisabled = authLoading || !isAdmin || !geminiKey || generating
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" style={{ paddingBottom: chatInputHeight + 8 }}>
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
 
       <h1 className="text-2xl font-bold">lokipedia</h1>
       <p className="text-sm text-slate-500">
-        調べたい単語を入力すると、AIが解説と4択クイズを生成します（管理者のみ）。
+        調べたい単語や「〜について教えて」を入力すると、AIが解説と4択クイズを生成します（管理者のみ）。
       </p>
 
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="例: PWA / PWAについて教えて"
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-sky-500"
-      />
-
-      <TagChipInput value={manualTags} onChange={setManualTags} placeholder="タグ（任意・手入力優先）" />
-
-      {!authLoading && !isAdmin && (
-        <p className="text-sm text-amber-600">管理者のみ利用できます。設定画面からログインしてください。</p>
-      )}
-      {!authLoading && isAdmin && !geminiKey && (
+      {geminiDisabledReason && (
         <p className="text-sm text-amber-600">
-          Gemini APIキーが未設定です。
-          <Link to="/settings" className="underline">
-            設定画面
-          </Link>
-          で登録してください。
+          {geminiDisabledReason}
+          {!authLoading && isAdmin && !geminiKey && (
+            <>
+              {' '}
+              <Link to="/settings" className="underline">
+                設定画面
+              </Link>
+              で登録してください。
+            </>
+          )}
         </p>
       )}
 
-      <button
-        type="button"
-        disabled={generateDisabled}
-        onClick={() => void handleGenerate()}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-3 font-semibold text-white disabled:opacity-40"
-      >
-        <Sparkles className="h-5 w-5" />
-        {generating ? '生成中...' : 'AIで生成'}
-      </button>
-
       {genError && <p className="text-sm text-rose-600">{genError}</p>}
 
-      {preview && (
+      {entry && (
         <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
           <div>
-            <h2 className="text-xl font-bold">{preview.term}</h2>
-            <div className="mt-2">
-              <TagChipInput value={previewTags} onChange={setPreviewTags} placeholder="タグ" />
+            <h2 className="text-xl font-bold break-words">{entry.term}</h2>
+            <div className="mt-2 space-y-2">
+              <TagChipInput value={entryTags} onChange={setEntryTags} placeholder="タグ" />
+              {existingTags.length > 0 && (
+                <div>
+                  <p className="mb-1 text-xs font-semibold text-slate-400">既存タグから追加</p>
+                  <TagToggleList
+                    tags={existingTags}
+                    selected={entryTags}
+                    onToggle={(tag) =>
+                      setEntryTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+                    }
+                  />
+                </div>
+              )}
             </div>
           </div>
 
-          <MarkdownView>{preview.definition}</MarkdownView>
+          <MarkdownView>{entry.definition}</MarkdownView>
 
-          <div className="space-y-2 rounded-xl bg-slate-50 p-3">
-            <p className="font-semibold">{preview.quiz.question}</p>
-            <ul className="space-y-1">
-              {preview.quiz.choices.map((choice, i) => (
-                <li
-                  key={i}
-                  className={`rounded-lg px-3 py-2 text-sm ${
-                    i === preview.quiz.correctIndex
-                      ? 'bg-emerald-100 font-semibold text-emerald-800'
-                      : 'bg-white text-slate-700'
-                  }`}
-                >
-                  {choice}
-                </li>
-              ))}
-            </ul>
-            <div className="pt-2">
-              <p className="text-xs font-semibold text-slate-500">解説</p>
-              <MarkdownView>{preview.quiz.explanation}</MarkdownView>
-            </div>
-          </div>
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+            4択クイズも1問生成済みです（登録時に一緒に保存されます）。
+          </p>
 
           {saveError && <p className="text-sm text-rose-600">{saveError}</p>}
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => void handleRegister()}
-              disabled={saving}
-              className="flex-1 rounded-xl bg-sky-600 px-4 py-3 font-semibold text-white disabled:opacity-40"
-            >
-              {saving ? '登録中...' : '辞書に登録'}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleGenerate()}
-              disabled={generating}
-              className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 font-semibold text-slate-700 disabled:opacity-40"
-            >
-              <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
-              再生成
-            </button>
-          </div>
+          {duplicate ? (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-600">
+                『{duplicate.term}』は登録済みです（{new Date(duplicate.createdAt).toLocaleDateString('ja-JP')} 登録）
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleUpdate()}
+                  disabled={saving}
+                  className="flex-1 rounded-xl bg-sky-600 px-4 py-3 font-semibold text-white disabled:opacity-40"
+                >
+                  {saving ? '更新中...' : '既存の単語を更新'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleRegister()}
+                  disabled={saving}
+                  className="flex-1 rounded-xl border border-slate-300 px-4 py-3 font-semibold text-slate-700 disabled:opacity-40"
+                >
+                  {saving ? '登録中...' : '新規として登録'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void handleRegister()}
+                disabled={saving}
+                className="flex-1 rounded-xl bg-sky-600 px-4 py-3 font-semibold text-white disabled:opacity-40"
+              >
+                {saving ? '登録中...' : '辞書に登録'}
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => void handleSend()}
+            disabled={generating}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 font-semibold text-slate-700 disabled:opacity-40"
+          >
+            <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
+            再生成
+          </button>
         </div>
       )}
+
+      {generating && !entry && <p className="text-sm text-slate-400">生成中...</p>}
+
+      <ChatInput
+        value={input}
+        onChange={setInput}
+        onSend={() => void handleSend()}
+        disabled={inputDisabled}
+        placeholder="例: PWA / PWAについて教えて"
+        onHeightChange={handleChatInputHeightChange}
+      />
     </div>
   )
 }

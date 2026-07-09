@@ -60,15 +60,16 @@ export default function App() {
         </Routes>
       </main>
 
+      {/* h-16(=4rem) は ChatInput（src/components/ChatInput.tsx）の bottom オフセット計算の前提になっている */}
       <nav className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
-        <div className="mx-auto flex max-w-2xl">
+        <div className="mx-auto flex h-16 max-w-2xl">
           {tabs.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${
+                `flex flex-1 flex-col items-center justify-center gap-0.5 text-xs ${
                   isActive ? 'text-sky-600' : 'text-slate-400'
                 }`
               }

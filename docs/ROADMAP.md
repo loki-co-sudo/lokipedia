@@ -148,23 +148,23 @@
 
 **ゴール**: チャット風入力・クイズ非表示のエントリカード・生成後のタグ編集・登録/更新の選択（DESIGN.md §5.1）。
 
-- [ ] `src/components/ChatInput.tsx`: 自動リサイズ textarea（1〜6行、以降は内部スクロール）+ 送信ボタン（lucide `Send`）。Enter は改行、送信はボタン（デスクトップは Ctrl/Cmd+Enter 可）。`disabled` 対応。
-- [ ] `src/pages/HomePage.tsx`: 検索 input を廃止し、タブバー上に固定した ChatInput に置換。会話エリアに入力欄の高さ分の padding-bottom を確保。
-- [ ] 生成前のタグ入力欄（TagChipInput）を撤去。
-- [ ] エントリカード: クイズの表示（question/choices/explanation のブロック）を撤去し、「4択クイズも1問生成済み（登録時に一緒に保存されます）」の注記に置換。**クイズの生成・保存自体は従来どおり行う。**
-- [ ] エントリカードのタグ編集: AI タグを初期値にしたチップ（×で削除）+ **既存タグ一覧からタップで追加** + 自由入力。
-- [ ] `src/lib/text.ts`: `normalizeTerm(s: string): string`（NFKC 正規化 + trim + 小文字化）を追加し vitest を書く。
-- [ ] `src/lib/repository.ts`:
+- [x] `src/components/ChatInput.tsx`: 自動リサイズ textarea（1〜6行、以降は内部スクロール）+ 送信ボタン（lucide `Send`）。Enter は改行、送信はボタン（デスクトップは Ctrl/Cmd+Enter 可）。`disabled` 対応。
+- [x] `src/pages/HomePage.tsx`: 検索 input を廃止し、タブバー上に固定した ChatInput に置換。会話エリアに入力欄の高さ分の padding-bottom を確保（`ResizeObserver` で高さを測定し `paddingBottom` に反映）。
+- [x] 生成前のタグ入力欄（TagChipInput）を撤去。
+- [x] エントリカード: クイズの表示（question/choices/explanation のブロック）を撤去し、「4択クイズも1問生成済み（登録時に一緒に保存されます）」の注記に置換。**クイズの生成・保存自体は従来どおり行う。**
+- [x] エントリカードのタグ編集: AI タグを初期値にしたチップ（×で削除）+ **既存タグ一覧からタップで追加**（`TagToggleList` 流用）+ 自由入力。
+- [x] `src/lib/text.ts`: `normalizeTerm(s: string): string`（NFKC 正規化 + trim + 小文字化）を追加し vitest を書く。
+- [x] `src/lib/repository.ts`:
   - `findWordByTerm(term: string): Promise<Word | undefined>` — `listWords()` の結果を `normalizeTerm` で比較（オフラインフォールバックは listWords が既に担う）。
   - `updateWordWithQuiz(id: string, input: CreateWordInput): Promise<Word>` — words を UPDATE（term / reading / definition / tags / updated_at。source_url は `input.sourceUrl` が非 null のときだけ上書き）+ quizzes に INSERT（既存クイズは削除しない）+ IndexedDB 更新。
-- [ ] 重複時 UI: 「『X』は登録済みです（登録日）」+「既存の単語を更新」「新規として登録」の2ボタン。更新成功時はトースト「更新しました」→ 詳細へ遷移。
-- [ ] `/add` からの `?q=` `?source_url=` 引き継ぎ、未ログイン/キー未設定時の無効化と理由表示を維持。
+- [x] 重複時 UI: 「『X』は登録済みです（登録日）」+「既存の単語を更新」「新規として登録」の2ボタン。更新成功時はトースト「更新しました」→ 詳細へ遷移。
+- [x] `/add` からの `?q=` `?source_url=` 引き継ぎ、未ログイン/キー未設定時の無効化と理由表示を維持。
 
 ### 受け入れ条件
-- [ ] `normalizeTerm` のユニットテスト（全角/半角・大文字小文字・前後空白の揺れが同一視される）が通る。
-- [ ] Playwright（モック）: 生成 → クイズが**表示されない**＆注記がある → タグ追加/削除 → 登録 → 詳細へ遷移。
-- [ ] Playwright（モック）: 既存 term と一致する語を生成 → 2ボタンが出る → 「更新」で words への UPDATE と quizzes への INSERT が飛び、既存クイズが残る（リクエスト検証）。「新規として登録」で従来の INSERT が飛ぶ。
-- [ ] 320px 幅で ChatInput・エントリカードがはみ出さない。
+- [x] `normalizeTerm` のユニットテスト（全角/半角・大文字小文字・前後空白の揺れが同一視される）が通る。`src/lib/text.test.ts` で確認。
+- [ ] Playwright（モック）: 生成 → クイズが**表示されない**＆注記がある → タグ追加/削除 → 登録 → 詳細へ遷移。**Playwright未導入のため未実施**。実装（`HomePage.tsx` のエントリカード）のコードレビューでクイズブロックが存在しないこと・注記文言が表示されることを確認済み。
+- [ ] Playwright（モック）: 既存 term と一致する語を生成 → 2ボタンが出る → 「更新」で words への UPDATE と quizzes への INSERT が飛び、既存クイズが残る（リクエスト検証）。「新規として登録」で従来の INSERT が飛ぶ。**Playwright未導入のため未実施**。`updateWordWithQuiz`/`createWordWithQuiz` の実装レビューで、UPDATE時にquizzesをDELETEしない（INSERTのみ）ことをコード上確認済み。
+- [ ] 320px 幅で ChatInput・エントリカードがはみ出さない。**Playwright未導入のため未実施**。`break-words`・`flex-wrap` 済みのタグチップ等コードレビューで確認したが、正式な監査は Phase 12（モバイル表示の総点検）で実施する。
 
 ---
 

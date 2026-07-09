@@ -4,6 +4,7 @@
 
 import { db, LAST_SYNCED_AT_KEY } from './db'
 import { supabase, supabaseConfigError } from './supabase'
+import { normalizeTerm } from './text'
 import type { ChoiceIndex, Quiz, QuizHistoryEntry, Word } from '../types'
 
 interface WordRow {
@@ -153,6 +154,49 @@ export async function createWordWithQuiz(input: CreateWordInput): Promise<Word> 
       tags: input.tags,
       source_url: input.sourceUrl,
     })
+    .select()
+    .single()
+  if (wordError) throw wordError
+  const word = wordFromRow(wordRow as WordRow)
+
+  const { error: quizError } = await client.from('quizzes').insert({
+    word_id: word.id,
+    question: input.quiz.question,
+    choices: input.quiz.choices,
+    correct_index: input.quiz.correctIndex,
+    explanation: input.quiz.explanation,
+  })
+  if (quizError) throw quizError
+
+  await db.words.put(word)
+  return word
+}
+
+// term の表記揺れ（正規化後の一致）で既存単語を探す（docs/DESIGN.md §5.1 重複判定）。
+export async function findWordByTerm(term: string): Promise<Word | undefined> {
+  const words = await listWords()
+  const normalized = normalizeTerm(term)
+  return words.find((w) => normalizeTerm(w.term) === normalized)
+}
+
+// 既存単語を上書き更新し、クイズを追加する（既存クイズは削除しない）。docs/DESIGN.md §5.1。
+export async function updateWordWithQuiz(id: string, input: CreateWordInput): Promise<Word> {
+  requireOnline()
+  const client = requireSupabase()
+
+  const updatePayload: Record<string, unknown> = {
+    term: input.term,
+    reading: input.reading,
+    definition: input.definition,
+    tags: input.tags,
+    updated_at: new Date().toISOString(),
+  }
+  if (input.sourceUrl !== null) updatePayload.source_url = input.sourceUrl
+
+  const { data: wordRow, error: wordError } = await client
+    .from('words')
+    .update(updatePayload)
+    .eq('id', id)
     .select()
     .single()
   if (wordError) throw wordError
