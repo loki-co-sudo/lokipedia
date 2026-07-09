@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { RotateCcw } from 'lucide-react'
 import MarkdownView from '../components/MarkdownView'
+import Skeleton from '../components/Skeleton'
 import TagToggleList from '../components/TagToggleList'
 import { addQuizHistoryEntry, listQuizzes, listWords } from '../lib/repository'
 import { shuffleArray, shuffleQuizChoices, type ShuffledChoices } from '../lib/quizShuffle'
@@ -125,7 +126,13 @@ export default function QuizPage() {
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-400">読み込み中...</p>
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    )
   }
 
   if (loadError) {

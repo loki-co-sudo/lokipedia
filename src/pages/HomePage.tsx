@@ -90,7 +90,7 @@ export default function HomePage() {
 
   return (
     <div className="space-y-4">
-      {toast && <Toast message={toast} />}
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
 
       <h1 className="text-2xl font-bold">lokipedia</h1>
       <p className="text-sm text-slate-500">

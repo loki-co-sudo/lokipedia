@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
+import Skeleton from '../components/Skeleton'
 import TagToggleList from '../components/TagToggleList'
 import WordCard from '../components/WordCard'
 import { listWords } from '../lib/repository'
@@ -62,7 +63,17 @@ export default function DictionaryPage() {
 
       {allTags.length > 0 && <TagToggleList tags={allTags} selected={selectedTags} onToggle={toggleTag} />}
 
-      {loading && <p className="text-sm text-slate-400">読み込み中...</p>}
+      {loading && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+          ))}
+        </div>
+      )}
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
       {!loading && !error && filteredWords.length === 0 && (

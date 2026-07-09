@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Sparkles, Trash2 } from 'lucide-react'
 import MarkdownView from '../components/MarkdownView'
+import Skeleton from '../components/Skeleton'
 import TagChipInput from '../components/TagChipInput'
 import Toast from '../components/Toast'
 import { useAuth } from '../hooks/useAuth'
@@ -105,7 +106,17 @@ export default function WordDetailPage() {
   }
 
   if (word === undefined) {
-    return <p className="text-sm text-slate-400">読み込み中...</p>
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-1/2" />
+        <Skeleton className="h-5 w-1/3" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+      </div>
+    )
   }
 
   if (word === null) {
@@ -117,7 +128,7 @@ export default function WordDetailPage() {
 
   return (
     <div className="space-y-6">
-      {toast && <Toast message={toast} />}
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
 
       <div>
         <h1 className="text-2xl font-bold">{word.term}</h1>

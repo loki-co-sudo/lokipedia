@@ -113,10 +113,10 @@
 
 ## Phase 6: 仕上げ・デプロイ
 
-- [ ] UI 磨き込み: ローディングスケルトン、空状態（辞書0件時の案内）、トースト統一。
-- [ ] README.md: セットアップ手順（Supabase 手動設定含む）、開発コマンド、デプロイ手順。
-- [ ] Vercel: GitHub リポジトリ連携、環境変数（`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`）設定、SPA fallback 確認（Vite SPA はデフォルトで OK、`vercel.json` の rewrite が必要なら追加）。
-- [ ] 本番 URL で PWA インストール・share_target・RLS（未ログイン書き込み拒否）を最終確認。
+- [x] UI 磨き込み: ローディングスケルトン（`src/components/Skeleton.tsx` を辞書一覧・単語詳細・クイズ設定画面に適用）、空状態（辞書0件時の案内は Phase 3 で対応済みを確認）、トースト統一（`Toast` コンポーネントに `onDismiss`/`duration` を持たせ自動消滅に統一。HomePage・WordDetailPage の2箇所を同じ挙動に揃えた）。
+- [x] README.md: セットアップ手順（Supabase 手動設定含む）、開発コマンド、デプロイ手順を整備。
+- [ ] Vercel: GitHub リポジトリ連携、環境変数（`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`）設定、SPA fallback 確認（Vite SPA はデフォルトで OK。念のため `vercel.json` に `rewrites` を追加済み）。**管理者への依頼**: GitHub 連携・Vercel アカウントでのプロジェクト作成・環境変数設定はエージェントの権限外（外部アカウントの認証情報が必要かつ影響範囲が大きい操作）のため、管理者ご自身で実施をお願いします。手順は README.md の「デプロイ（Vercel）」に記載。
+- [ ] 本番 URL で PWA インストール・share_target・RLS（未ログイン書き込み拒否）を最終確認。**管理者への依頼**: 本番 URL が発行された後、README.md 記載のチェックリストに沿ってご確認ください。
 
 ---
 
