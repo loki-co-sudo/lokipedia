@@ -8,6 +8,7 @@
 create table if not exists public.words (
   id          uuid primary key default gen_random_uuid(),
   term        text not null,
+  reading     text,                         -- よみがな（ひらがな）。50音順ソートに使用。旧データはNULL
   definition  text not null,                -- Markdown
   tags        text[] not null default '{}',
   source_url  text,

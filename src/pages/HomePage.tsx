@@ -72,6 +72,7 @@ export default function HomePage() {
     try {
       const word = await createWordWithQuiz({
         term: preview.term,
+        reading: preview.reading,
         definition: preview.definition,
         tags: previewTags,
         sourceUrl,

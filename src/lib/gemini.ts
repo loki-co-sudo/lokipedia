@@ -10,6 +10,7 @@ const responseSchema = {
   type: 'OBJECT',
   properties: {
     term: { type: 'STRING' },
+    reading: { type: 'STRING' },
     definition: { type: 'STRING' },
     tags: { type: 'ARRAY', items: { type: 'STRING' }, minItems: 3, maxItems: 3 },
     quiz: {
@@ -23,7 +24,7 @@ const responseSchema = {
       required: ['question', 'choices', 'correctIndex', 'explanation'],
     },
   },
-  required: ['term', 'definition', 'tags', 'quiz'],
+  required: ['term', 'reading', 'definition', 'tags', 'quiz'],
 } as const
 
 function buildPrompt(input: string, existingTags: string[]): string {
@@ -36,6 +37,7 @@ ${input}
 
 # 出力要件
 - term: 調べたい主題を正規化した見出し語（日本語）。
+- reading: term のよみがなを**ひらがな**で（例: term「冪等性」→「べきとうせい」、英字語は日本語での読み「PWA」→「ぴーだぶりゅーえー」）。
 - definition: term について Markdown 形式で日本語の詳細な解説。見出し(##)や箇条書きを活用し、初学者にもわかりやすく書く。
 - tags: term のジャンルを表す日本語タグをちょうど3つ。以下の既存タグ一覧に近いものがあれば表記揺れを防ぐため必ず再利用すること。
   既存タグ一覧: ${existingTagsText}
@@ -63,6 +65,7 @@ export function isGeneratedEntry(value: unknown): value is GeneratedEntry {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>
   if (!isNonEmptyString(v.term)) return false
+  if (!isNonEmptyString(v.reading)) return false
   if (!isNonEmptyString(v.definition)) return false
   if (!isStringArrayOfLength(v.tags, 3)) return false
 

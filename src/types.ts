@@ -4,6 +4,8 @@
 export interface Word {
   id: string
   term: string
+  /** よみがな（ひらがな）。50音順ソート用。旧データは null */
+  reading: string | null
   /** Markdown */
   definition: string
   tags: string[]
@@ -39,6 +41,8 @@ export interface QuizHistoryEntry {
 /** Gemini からの生成結果（Supabase 保存前のプレビューに使う） */
 export interface GeneratedEntry {
   term: string
+  /** よみがな（ひらがな） */
+  reading: string
   definition: string
   /** ちょうど3つ */
   tags: string[]

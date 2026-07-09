@@ -128,19 +128,19 @@
 
 **ゴール**: 50音順ソート（Phase 10）の土台となる「よみがな」を、生成・保存の全経路が持ち運べる。
 
-- [ ] `supabase/schema.sql`: `words` に `reading text`（NULL可）を追加（新規セットアップ用 DDL に反映。RLS 変更なし）。
+- [x] `supabase/schema.sql`: `words` に `reading text`（NULL可）を追加（新規セットアップ用 DDL に反映。RLS 変更なし）。
 - [x] **管理者への依頼**: 既存の Supabase プロジェクトの SQL Editor で `alter table public.words add column reading text;` を実行してもらう。**この ALTER が完了するまで本フェーズをデプロイしない**（`reading` 列への INSERT が失敗するため）。依頼文をフェーズ完了報告に含めること。
-- [ ] `src/types.ts`: `Word.reading: string | null`、`GeneratedEntry.reading: string` を追加（DESIGN.md §3 と一致させる）。
-- [ ] `src/lib/repository.ts`: `WordRow` に `reading` を追加し、`wordFromRow` / `createWordWithQuiz` の INSERT / 同期に反映。
-- [ ] `src/lib/gemini.ts`: `responseSchema`・プロンプト（DESIGN.md §4「reading はひらがな」）・型ガード `isGeneratedEntry` に `reading` を追加。
-- [ ] `src/lib/db.ts`: ストア定義はキー・インデックスのみのため **Dexie の version 上げは不要**なことを確認（`reading` はインデックスにしない）。
-- [ ] `src/pages/HomePage.tsx`: `createWordWithQuiz` へ `reading` を渡す（UI 変更はまだしない。Phase 8 の領分）。
+- [x] `src/types.ts`: `Word.reading: string | null`、`GeneratedEntry.reading: string` を追加（DESIGN.md §3 と一致させる）。
+- [x] `src/lib/repository.ts`: `WordRow` に `reading` を追加し、`wordFromRow` / `createWordWithQuiz` の INSERT / 同期に反映。
+- [x] `src/lib/gemini.ts`: `responseSchema`・プロンプト（DESIGN.md §4「reading はひらがな」）・型ガード `isGeneratedEntry` に `reading` を追加。
+- [x] `src/lib/db.ts`: ストア定義はキー・インデックスのみのため **Dexie の version 上げは不要**なことを確認（`reading` はインデックスにしない）。確認済み: `words` ストアのインデックス指定は `id, updatedAt` のみで `reading` は含めないため `version(1)` のまま変更不要。
+- [x] `src/pages/HomePage.tsx`: `createWordWithQuiz` へ `reading` を渡す（UI 変更はまだしない。Phase 8 の領分）。
 
 ### 受け入れ条件
-- [ ] `npm run build` / `npm run test` / `npm run lint` が通る。
-- [ ] `reading` を欠いた Gemini 応答が型ガードで拒否され、日本語エラーになる（vitest または Node モックで確認）。
-- [ ] Playwright（API モック）で生成→登録した際、`words` への INSERT ボディに `reading` が含まれる。
-- [ ] `syncFromSupabase()` 後、IndexedDB の word に `reading` が入る（旧データの NULL は null のまま保持される）。
+- [x] `npm run build` / `npm run test` / `npm run lint` が通る。
+- [x] `reading` を欠いた Gemini 応答が型ガードで拒否され、日本語エラーになる（vitest または Node モックで確認）。`src/lib/gemini.test.ts` を追加し、`isGeneratedEntry` が `reading` 欠如・空文字を `false` として拒否することを確認。
+- [ ] Playwright（API モック）で生成→登録した際、`words` への INSERT ボディに `reading` が含まれる。**Playwright未導入のため未実施**（管理者確認の上、本v2フェーズではPlaywrightを新規導入しない方針とした）。代わりに `createWordWithQuiz` の実装・型定義で `reading` がINSERTボディに含まれることをコードレビューで確認済み。
+- [ ] `syncFromSupabase()` 後、IndexedDB の word に `reading` が入る（旧データの NULL は null のまま保持される）。**実Supabase環境が無いため未実施**。`wordFromRow` / `syncFromSupabase` の実装上 `reading` 列がそのまま `Word` に渡ることをコードレビューで確認済み。管理者には本番相当環境（`alter table` 実行後）での最終確認を依頼。
 
 ---
 

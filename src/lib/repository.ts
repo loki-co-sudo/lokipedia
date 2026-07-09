@@ -9,6 +9,7 @@ import type { ChoiceIndex, Quiz, QuizHistoryEntry, Word } from '../types'
 interface WordRow {
   id: string
   term: string
+  reading: string | null
   definition: string
   tags: string[]
   source_url: string | null
@@ -30,6 +31,7 @@ function wordFromRow(row: WordRow): Word {
   return {
     id: row.id,
     term: row.term,
+    reading: row.reading,
     definition: row.definition,
     tags: row.tags,
     sourceUrl: row.source_url,
@@ -131,6 +133,7 @@ interface QuizInput {
 
 export interface CreateWordInput {
   term: string
+  reading: string
   definition: string
   tags: string[]
   sourceUrl: string | null
@@ -145,6 +148,7 @@ export async function createWordWithQuiz(input: CreateWordInput): Promise<Word> 
     .from('words')
     .insert({
       term: input.term,
+      reading: input.reading,
       definition: input.definition,
       tags: input.tags,
       source_url: input.sourceUrl,
