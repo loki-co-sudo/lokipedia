@@ -242,3 +242,7 @@ export async function listQuizHistoryForWord(wordId: string): Promise<QuizHistor
   const entries = await db.quizHistory.where('wordId').equals(wordId).toArray()
   return entries.sort((a, b) => b.answeredAt.localeCompare(a.answeredAt))
 }
+
+export async function addQuizHistoryEntry(entry: Omit<QuizHistoryEntry, 'id'>): Promise<void> {
+  await db.quizHistory.add(entry)
+}

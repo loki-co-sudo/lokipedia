@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
+import TagToggleList from '../components/TagToggleList'
 import WordCard from '../components/WordCard'
 import { listWords } from '../lib/repository'
 import type { Word } from '../types'
@@ -59,24 +60,7 @@ export default function DictionaryPage() {
         />
       </div>
 
-      {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {allTags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => toggleTag(tag)}
-              className={`rounded-full px-3 py-1 text-xs font-medium ${
-                selectedTags.includes(tag)
-                  ? 'bg-sky-600 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-      )}
+      {allTags.length > 0 && <TagToggleList tags={allTags} selected={selectedTags} onToggle={toggleTag} />}
 
       {loading && <p className="text-sm text-slate-400">読み込み中...</p>}
       {error && <p className="text-sm text-rose-600">{error}</p>}

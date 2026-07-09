@@ -17,11 +17,12 @@ npm run dev        # 開発サーバー
 npm run build      # 型チェック(tsc -b) + 本番ビルド。コミット前に必ず通すこと
 npm run preview    # ビルド成果物の確認（Service Worker / PWA の検証はこちらで）
 npm run lint       # ESLint
+npm run test       # vitest（純粋関数のユニットテスト）
 ```
 
 ## 技術スタック（変更禁止。追加ライブラリは管理者に確認）
 
-Vite + React 19 + TypeScript / Tailwind CSS v4（`@tailwindcss/vite`、tailwind.config は使わない） / react-router-dom / Dexie.js / @supabase/supabase-js / vite-plugin-pwa / lucide-react / react-markdown
+Vite + React 19 + TypeScript / Tailwind CSS v4（`@tailwindcss/vite`、tailwind.config は使わない） / react-router-dom / Dexie.js / @supabase/supabase-js / vite-plugin-pwa / lucide-react / react-markdown / vitest（Phase 4 でユニットテストのため管理者承認の上追加）
 
 ## アーキテクチャ上の絶対ルール
 
