@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useRef } from 'react'
+import { type KeyboardEvent, type ReactNode, useEffect, useRef } from 'react'
 import { Send } from 'lucide-react'
 
 interface ChatInputProps {
@@ -9,16 +9,28 @@ interface ChatInputProps {
   placeholder?: string
   /** 高さが変わるたびに通知する（会話エリアの padding-bottom 確保に使う） */
   onHeightChange?: (height: number) => void
+  /** 入力欄の上に表示する付属UI（回答モード選択チップ等） */
+  children?: ReactNode
 }
 
 const MAX_ROWS = 6
-const LINE_HEIGHT_PX = 20
+// text-base(16px) の行高。iOS Safari は 16px 未満の入力欄にフォーカスすると
+// 自動ズームして横幅が崩れるため、textarea のフォントは text-base 未満にしないこと。
+const LINE_HEIGHT_PX = 24
 
 /**
  * チャット風の下部固定入力欄（docs/DESIGN.md §5.1）。
  * Enter は改行、送信は送信ボタン（デスクトップは Ctrl/Cmd+Enter でも送信可）。
  */
-export default function ChatInput({ value, onChange, onSend, disabled, placeholder, onHeightChange }: ChatInputProps) {
+export default function ChatInput({
+  value,
+  onChange,
+  onSend,
+  disabled,
+  placeholder,
+  onHeightChange,
+  children,
+}: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -57,6 +69,7 @@ export default function ChatInput({ value, onChange, onSend, disabled, placehold
       className="fixed inset-x-0 z-40 border-t border-app-border bg-app-bg/95 px-3 pt-2 backdrop-blur"
       style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
     >
+      {children}
       <div className="mx-auto flex max-w-2xl items-end gap-2 rounded-2xl border border-app-border bg-app-surface px-3 py-2 pb-3">
         <textarea
           ref={textareaRef}
@@ -66,7 +79,7 @@ export default function ChatInput({ value, onChange, onSend, disabled, placehold
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
-          className="max-h-32 min-h-6 w-full min-w-0 flex-1 resize-none overflow-y-auto border-none bg-transparent py-1 text-sm text-app-text outline-none disabled:opacity-40"
+          className="max-h-36 min-h-6 w-full min-w-0 flex-1 resize-none overflow-y-auto border-none bg-transparent py-1 text-base text-app-text outline-none disabled:opacity-40"
         />
         <button
           type="button"

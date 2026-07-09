@@ -9,7 +9,8 @@ import TagToggleList from '../components/TagToggleList'
 import MarkdownView from '../components/MarkdownView'
 import Toast from '../components/Toast'
 import { useAuth } from '../hooks/useAuth'
-import { getGeminiApiKey } from '../lib/settings'
+import { getAnswerMode, getGeminiApiKey, setAnswerMode } from '../lib/settings'
+import { ANSWER_MODE_LABELS, ANSWER_MODES, type AnswerMode } from '../lib/answerMode'
 import { generateEntry, generateFollowUp } from '../lib/gemini'
 import { createWordWithQuiz, findWordByTerm, listWords, updateWordWithQuiz } from '../lib/repository'
 import type { ChatMessage, GeneratedEntry, Word } from '../types'
@@ -43,6 +44,7 @@ export default function HomePage() {
   const [toast, setToast] = useState<string | null>(null)
 
   const [chatInputHeight, setChatInputHeight] = useState(0)
+  const [answerMode, setAnswerModeState] = useState<AnswerMode>(() => getAnswerMode())
 
   const geminiKey = getGeminiApiKey()
 
@@ -64,7 +66,7 @@ export default function HomePage() {
     try {
       const key = getGeminiApiKey()
       if (!key) throw new Error('Gemini APIキーが設定されていません。設定画面で登録してください。')
-      const result = await generateEntry(query, key, existingTags)
+      const result = await generateEntry(query, key, existingTags, answerMode)
       setEntry(result)
       setEntryTags(result.tags)
       setConversation([{ role: 'model', text: result.definition }])
@@ -91,7 +93,7 @@ export default function HomePage() {
     setFollowUpLoading(true)
     setFollowUpError(null)
     try {
-      const answer = await generateFollowUp(historyWithQuestion, key)
+      const answer = await generateFollowUp(historyWithQuestion, key, answerMode)
       setConversation((prev) => [...prev, { role: 'model', text: answer }])
     } catch (e) {
       setFollowUpError(e instanceof Error ? e.message : '追加質問に失敗しました。')
@@ -177,6 +179,11 @@ export default function HomePage() {
   }
 
   const handleChatInputHeightChange = useCallback((height: number) => setChatInputHeight(height), [])
+
+  function handleAnswerModeChange(mode: AnswerMode) {
+    setAnswerModeState(mode)
+    setAnswerMode(mode)
+  }
 
   // 継続質問の吹き出しが追加されたら最下部（最新のやりとり）まで自動スクロールする。
   useEffect(() => {
@@ -331,7 +338,24 @@ export default function HomePage() {
         disabled={inputDisabled}
         placeholder={entry ? '追加で質問する...' : '例: PWA / PWAについて教えて'}
         onHeightChange={handleChatInputHeightChange}
-      />
+      >
+        <div className="mx-auto mb-2 flex max-w-2xl items-center gap-1.5 overflow-x-auto">
+          {ANSWER_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => handleAnswerModeChange(mode)}
+              className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
+                answerMode === mode
+                  ? 'bg-app-accent text-app-on-accent'
+                  : 'bg-app-surface-2 text-app-text-muted hover:bg-app-border'
+              }`}
+            >
+              {ANSWER_MODE_LABELS[mode]}
+            </button>
+          ))}
+        </div>
+      </ChatInput>
     </div>
   )
 }

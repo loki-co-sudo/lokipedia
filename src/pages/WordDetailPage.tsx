@@ -17,7 +17,7 @@ import {
   updateWordTags,
 } from '../lib/repository'
 import { generateEntry } from '../lib/gemini'
-import { getGeminiApiKey } from '../lib/settings'
+import { getAnswerMode, getGeminiApiKey } from '../lib/settings'
 import type { Quiz, QuizHistoryEntry, Word } from '../types'
 
 /**
@@ -114,7 +114,7 @@ export default function WordDetailPage() {
       const allWords = await listWords()
       const tagSet = new Set<string>()
       for (const w of allWords) for (const t of w.tags) tagSet.add(t)
-      const result = await generateEntry(word.term, key, Array.from(tagSet))
+      const result = await generateEntry(word.term, key, Array.from(tagSet), getAnswerMode())
       const created = await addQuiz(word.id, result.quiz)
       setQuizzes((prev) => [...prev, created])
       setToast('クイズを追加しました')
@@ -173,7 +173,7 @@ export default function WordDetailPage() {
                   value={editingReading}
                   onChange={(e) => setEditingReading(e.target.value)}
                   placeholder="ひらがな"
-                  className="rounded-lg border border-app-border px-2 py-1 text-sm outline-none focus:border-app-accent"
+                  className="rounded-lg border border-app-border px-2 py-1 text-base outline-none focus:border-app-accent"
                 />
                 <button
                   type="button"

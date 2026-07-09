@@ -1,6 +1,8 @@
 // localStorage アクセスの集約。docs/DESIGN.md §2.3 参照。
 // Gemini API キーはこのモジュール経由でのみ読み書きする（CLAUDE.md 絶対ルール1）。
 
+import { type AnswerMode, isAnswerMode } from './answerMode'
+
 const GEMINI_API_KEY_STORAGE_KEY = 'lokipedia:gemini-api-key'
 
 export function getGeminiApiKey(): string | null {
@@ -25,6 +27,17 @@ export function getDictionarySort(): DictionarySort {
 
 export function setDictionarySort(sort: DictionarySort): void {
   localStorage.setItem(DICTIONARY_SORT_STORAGE_KEY, sort)
+}
+
+const ANSWER_MODE_STORAGE_KEY = 'lokipedia:answer-mode'
+
+export function getAnswerMode(): AnswerMode {
+  const value = localStorage.getItem(ANSWER_MODE_STORAGE_KEY)
+  return isAnswerMode(value) ? value : 'standard'
+}
+
+export function setAnswerMode(mode: AnswerMode): void {
+  localStorage.setItem(ANSWER_MODE_STORAGE_KEY, mode)
 }
 
 const THEME_STORAGE_KEY = 'lokipedia:theme'

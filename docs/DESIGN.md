@@ -102,6 +102,7 @@ DDL と RLS ポリシーは [supabase/schema.sql](../supabase/schema.sql) が正
 | `lokipedia:gemini-api-key` | 管理者の Gemini API キー。設定画面から保存。**コードやリポジトリに含めない。** |
 | `lokipedia:theme` | テーマ選択 `'light' \| 'dark' \| 'loki'`（§5.5）。未設定時のデフォルトは `'loki'`。 |
 | `lokipedia:dictionary-sort` | 辞書一覧の並び順 `'latest' \| 'kana'`（§5.2）。未設定時は `'latest'`。 |
+| `lokipedia:answer-mode` | 回答モード `'standard' \| 'loki' \| 'gentle' \| 'kansai' \| 'expert'`（§4.2 / §5.1）。未設定時は `'standard'`。 |
 | （supabase-js が自動管理） | Auth セッショントークン |
 
 localStorage の読み書きはすべて `src/lib/settings.ts` に集約する（キーごとに get/set 関数を追加）。
@@ -184,7 +185,7 @@ interface ChatMessage {
 
 エントリ生成後、ユーザーは同じ入力欄から追加質問できる（§5.1）。このための関数を `gemini.ts` に追加する。
 
-- `generateFollowUp(history: ChatMessage[], apiKey: string): Promise<string>`
+- `generateFollowUp(history: ChatMessage[], apiKey: string, mode: AnswerMode): Promise<string>`
   - `history` は user / model が交互に並ぶ会話履歴で、**末尾は必ず role: 'user'（今回の質問）**。
   - リクエストの `contents` に `role` 付きで履歴をそのまま渡す（Gemini API のマルチターン形式）。
   - 会話の最初の model ターンには、初回生成の JSON 全体ではなく **`definition` の Markdown テキスト**を入れる（トークン節約のため。クイズやタグは会話文脈に不要）。
@@ -192,6 +193,22 @@ interface ChatMessage {
   - システム指示（プロンプト先頭 or systemInstruction）: 「直前までの解説の文脈を踏まえ、日本語の Markdown で簡潔に回答せよ」。
   - エラー処理は `generateEntry` と同方針（日本語メッセージ、**自動リトライしない**）。
 - 継続質問の内容は**辞書に保存しない**。会話はメモリ上のみ（リロードで消える）。
+
+### 4.2 回答モード（文体切り替え）
+
+回答の文体・深さを「標準 / ロキ / 優しく / 関西弁 / エキスパート」の5モードから選択できる。定義は [src/lib/answerMode.ts](../src/lib/answerMode.ts) に集約する。
+
+| モード | 文体 |
+|---|---|
+| `standard`（標準） | 中立で丁寧。初学者にもわかりやすく |
+| `loki`（ロキ） | 馴れ馴れしい「相棒」風。調子が良くて憎めない、トラブルを引っ提げて笑顔で現れるノリ |
+| `gentle`（優しく） | お姉さんが子どもに語りかけるような優しい口調。例え話を交えてかみ砕く |
+| `kansai`（関西弁） | 元気でハキハキした関西弁のお兄さん風 |
+| `expert`（エキスパート） | その道のエキスパート向け。入門的説明は最小限にし、内部の仕組みや周辺知識まで踏み込むマニア向け解説 |
+
+- `generateEntry(input, apiKey, existingTags, mode)`: 文体指示をプロンプトに含める。**適用対象は `definition` と `quiz.explanation` のみ**（term / reading / tags / question / choices は中立のまま）。
+- `generateFollowUp(history, apiKey, mode)`: systemInstruction に文体指示を追記する。
+- 選択は `lokipedia:answer-mode`（§2.3）に保存し、次回以降も維持する。
 
 ---
 
@@ -218,6 +235,8 @@ interface ChatMessage {
 - タブバーの上に固定配置（`position: fixed` + タブバー高さ分の bottom オフセット。会話エリア側に入力欄の高さ分の padding-bottom を確保）。
 - 未ログイン時・Gemini キー未設定時は入力欄を無効化し、理由と設定画面への導線を表示（従来仕様を踏襲）。
 - **生成前のタグ入力欄は廃止**（タグは生成結果の表示後に編集する。下記）。
+- 入力欄の上に**回答モード**選択チップ（標準 / ロキ / 優しく / 関西弁 / エキスパート。§4.2）を表示する。初回生成・継続質問・再生成のすべてに現在の選択が適用され、選択は `lokipedia:answer-mode`（§2.3）に保存される。
+- textarea のフォントは **16px（`text-base`）以上**とする。iOS Safari は 16px 未満の入力欄にフォーカスすると自動ズームしてレイアウトが崩れるため（入力系要素全般の最低 16px は `index.css` の base ルールで保証）。
 
 **初回送信 → エントリカード**
 - 送信した検索ワードは user の吹き出し（`src/components/ChatBubble.tsx`）として会話エリアに表示し、その下に回答（エントリカード）を続ける。ローディング中は「考え中...」の吹き出しを表示する。

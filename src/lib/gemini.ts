@@ -1,6 +1,7 @@
 // Gemini API 連携。docs/DESIGN.md §4 が仕様の正。
 // Gemini の呼び出しはこのモジュールのみが行う（CLAUDE.md 絶対ルール5）。
 
+import { ANSWER_MODE_INSTRUCTIONS, type AnswerMode } from './answerMode'
 import type { ChatMessage, ChoiceIndex, GeneratedEntry } from '../types'
 
 const MODEL = 'gemini-2.5-flash'
@@ -27,7 +28,7 @@ const responseSchema = {
   required: ['term', 'reading', 'definition', 'tags', 'quiz'],
 } as const
 
-function buildPrompt(input: string, existingTags: string[]): string {
+function buildPrompt(input: string, existingTags: string[], mode: AnswerMode): string {
   const existingTagsText = existingTags.length > 0 ? existingTags.join('、') : '（まだ登録されているタグはありません）'
   return `あなたは日本語の学習支援AIです。以下の入力から調べたい主題を特定し、共有辞書用のエントリを1件生成してください。
 入力は単語そのものの場合も、「〜について教えて」のような文の場合も、URLやテキストの場合もあります。
@@ -38,14 +39,17 @@ ${input}
 # 出力要件
 - term: 調べたい主題を正規化した見出し語（日本語）。
 - reading: term のよみがなを**ひらがな**で（例: term「冪等性」→「べきとうせい」、英字語は日本語での読み「PWA」→「ぴーだぶりゅーえー」）。
-- definition: term について Markdown 形式で日本語の詳細な解説。見出し(##)や箇条書きを活用し、初学者にもわかりやすく書く。
+- definition: term について Markdown 形式で日本語の詳細な解説。見出し(##)や箇条書きを活用する。文体・深さは下記「回答モード」に従う。
 - tags: term のジャンルを表す日本語タグをちょうど3つ。以下の既存タグ一覧に近いものがあれば表記揺れを防ぐため必ず再利用すること。
   既存タグ一覧: ${existingTagsText}
 - quiz: 応用情報技術者試験の午前試験に似た、知識の理解を問う4択問題を1問。
   - question: 問題文
   - choices: もっともらしい誤答を含む4つの選択肢（ちょうど4つ）
   - correctIndex: 正解の choices 内での添字（0〜3の整数）
-  - explanation: 正解の根拠と、誤答がそれぞれ誤りである理由を含む詳しい解説（Markdown）
+  - explanation: 正解の根拠と、誤答がそれぞれ誤りである理由を含む詳しい解説（Markdown）。文体は下記「回答モード」に従う。
+
+# 回答モード（definition と quiz.explanation の文体にのみ適用する。term / reading / tags / question / choices は中立のまま）
+${ANSWER_MODE_INSTRUCTIONS[mode]}
 `
 }
 
@@ -83,6 +87,7 @@ export async function generateEntry(
   input: string,
   apiKey: string,
   existingTags: string[],
+  mode: AnswerMode,
 ): Promise<GeneratedEntry> {
   let response: Response
   try {
@@ -90,7 +95,7 @@ export async function generateEntry(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: buildPrompt(input, existingTags) }] }],
+        contents: [{ parts: [{ text: buildPrompt(input, existingTags, mode) }] }],
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema,
@@ -139,7 +144,7 @@ export async function generateEntry(
  * 会話の最初の model ターンには definition の Markdown テキストを入れる想定（呼び出し側の責務）。
  * responseSchema は使わず、自由な Markdown テキストをそのまま返す。自動リトライはしない。
  */
-export async function generateFollowUp(history: ChatMessage[], apiKey: string): Promise<string> {
+export async function generateFollowUp(history: ChatMessage[], apiKey: string, mode: AnswerMode): Promise<string> {
   let response: Response
   try {
     response = await fetch(`${ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
@@ -147,7 +152,11 @@ export async function generateFollowUp(history: ChatMessage[], apiKey: string): 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: {
-          parts: [{ text: '直前までの解説の文脈を踏まえ、日本語の Markdown で簡潔に回答せよ。' }],
+          parts: [
+            {
+              text: `直前までの解説の文脈を踏まえ、日本語の Markdown で簡潔に回答せよ。回答の文体: ${ANSWER_MODE_INSTRUCTIONS[mode]}`,
+            },
+          ],
         },
         contents: history.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
       }),

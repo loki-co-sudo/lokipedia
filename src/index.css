@@ -8,6 +8,17 @@ body {
   overflow-x: clip;
 }
 
+/* iOS Safari はフォント16px未満の入力欄にフォーカスすると自動ズームして横幅が崩れるため、
+   入力系は最低 16px を保証する。ユーティリティ（text-sm 等）は base より優先されるので、
+   入力要素には text-sm 以下を指定しないこと。 */
+@layer base {
+  input,
+  textarea,
+  select {
+    font-size: 1rem;
+  }
+}
+
 /* セマンティックトークン。docs/DESIGN.md §5.5 の表が正。data-theme はバンドル読み込み前に
    index.html のインラインスクリプトが設定する（FOUC 防止）。:root 単体はその前段のフォールバック。 */
 :root,

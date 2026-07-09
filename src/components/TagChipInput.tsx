@@ -51,7 +51,7 @@ export default function TagChipInput({ value, onChange, placeholder }: TagChipIn
         onKeyDown={handleKeyDown}
         onBlur={commitDraft}
         placeholder={value.length === 0 ? placeholder : ''}
-        className="min-w-24 flex-1 border-none py-1 text-sm outline-none"
+        className="min-w-24 flex-1 border-none py-1 text-base outline-none"
       />
     </div>
   )
