@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import { BookOpen, Home, ListChecks, Settings } from 'lucide-react'
 import HomePage from './pages/HomePage'
@@ -6,6 +7,8 @@ import DictionaryPage from './pages/DictionaryPage'
 import WordDetailPage from './pages/WordDetailPage'
 import QuizPage from './pages/QuizPage'
 import SettingsPage from './pages/SettingsPage'
+import { supabaseConfigError } from './lib/supabase'
+import { syncFromSupabase } from './lib/repository'
 
 const tabs = [
   { to: '/', label: 'ホーム', icon: Home },
@@ -15,6 +18,26 @@ const tabs = [
 ] as const
 
 export default function App() {
+  // アプリ起動時に Supabase → IndexedDB の全件同期を行う（docs/DESIGN.md §2.2）。
+  // オフラインや未設定時は静かに諦め、読み取りは IndexedDB キャッシュにフォールバックする。
+  useEffect(() => {
+    if (supabaseConfigError || !navigator.onLine) return
+    syncFromSupabase().catch((err) => {
+      console.error('[App] 初回同期に失敗しました', err)
+    })
+  }, [])
+
+  if (supabaseConfigError) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center p-6 text-center">
+        <div className="max-w-sm space-y-2">
+          <p className="text-lg font-bold text-rose-600">設定エラー</p>
+          <p className="text-sm text-slate-600">{supabaseConfigError}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-dvh bg-slate-50 text-slate-900">
       <main className="mx-auto max-w-2xl px-4 pt-4 pb-24">

@@ -28,16 +28,18 @@
 5. Project Settings → API から URL と anon キーを取得し、`.env.local` に設定。
 
 ### 実装タスク
-- [ ] `src/lib/supabase.ts`: `import.meta.env.VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY` からクライアント生成。env 未設定時は起動時に分かりやすいエラー表示（白画面にしない）。
-- [ ] `src/hooks/useAuth.ts`: セッション状態の購読、`signIn(email, password)` / `signOut()`。
-- [ ] 設定画面: ログインフォーム、ログイン状態表示、ログアウト、Gemini キー保存 UI（`src/lib/settings.ts` 経由）。
-- [ ] `src/lib/repository.ts`: `listWords / getWord / createWordWithQuiz / updateWordTags / deleteWord / listQuizzes(byWordId?) / addQuiz` を実装。snake_case↔camelCase 変換はここに閉じ込める（DESIGN.md §3）。
-- [ ] `src/lib/db.ts`（Dexie）: DESIGN.md §2.2 のストア定義と、全件同期関数 `syncFromSupabase()`。読み取り系はオフライン時 IndexedDB にフォールバック。
+- [x] `src/lib/supabase.ts`: `import.meta.env.VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY` からクライアント生成。env 未設定時は起動時に分かりやすいエラー表示（白画面にしない）。
+- [x] `src/hooks/useAuth.ts`: セッション状態の購読、`signIn(email, password)` / `signOut()`。
+- [x] 設定画面: ログインフォーム、ログイン状態表示、ログアウト、Gemini キー保存 UI（`src/lib/settings.ts` 経由）。
+- [x] `src/lib/repository.ts`: `listWords / getWord / createWordWithQuiz / updateWordTags / deleteWord / listQuizzes(byWordId?) / addQuiz` を実装。snake_case↔camelCase 変換はここに閉じ込める（DESIGN.md §3）。
+- [x] `src/lib/db.ts`（Dexie）: DESIGN.md §2.2 のストア定義。全件同期関数 `syncFromSupabase()` は Supabase アクセスを伴うため repository.ts に実装（CLAUDE.md「Supabase/IndexedDB アクセスは repository.ts に集約」を優先、db.ts はスキーマ定義のみに専念）。読み取り系はオフライン時 IndexedDB にフォールバック。
 
 ### 受け入れ条件
-- 設定画面から管理者ログイン/ログアウトができ、リロード後もセッションが維持される。
-- 未ログインのブラウザから Supabase への INSERT が RLS で拒否されることを確認（手動 or 一時的な検証コードで良い。確認結果をコミットメッセージに記載）。
-- `syncFromSupabase()` 後、DevTools の IndexedDB に words/quizzes が入っている。
+- [x] 設定画面から管理者ログイン/ログアウトができ、リロード後もセッションが維持される（supabase-js の Auth セッションは localStorage 永続化がデフォルトのため実装済み。実credentials での動作確認は下記メモの通り管理者に依頼）。
+- [x] 未ログインのブラウザから Supabase への INSERT が RLS で拒否されることを確認。`curl` で anon キーによる `words` テーブルへの直接 INSERT を実行し `401 / 42501 new row violates row-level security policy for table "words"` を確認。SELECT は `200` で許可されることも確認済み。
+- [x] `syncFromSupabase()` 後、DevTools の IndexedDB に words/quizzes が入っている。Playwright で `/settings` の「今すぐ同期」を実行し、IndexedDB に `lokipedia` DB と `words/quizzes/quizHistory/meta` の4ストアが作成されることを確認（現時点では words テーブルが空のため件数は0件、`meta` に `lastSyncedAt` が1件入る）。
+
+**管理者への依頼**: 実際の管理者アカウント（メール+パスワード）でのログイン成功、リロード後のセッション維持は実credentials がないと確認できません。設定画面からログイン → リロードしてログイン状態が保たれるかご確認ください。
 
 ---
 
