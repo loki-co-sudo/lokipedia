@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import { RefreshCw, Sparkles } from 'lucide-react'
+import ChatBubble from '../components/ChatBubble'
 import ChatInput from '../components/ChatInput'
 import TagChipInput from '../components/TagChipInput'
 import TagToggleList from '../components/TagToggleList'
@@ -18,7 +19,6 @@ import type { ChatMessage, GeneratedEntry, Word } from '../types'
  * /add（共有受け取り）から ?q= ?source_url= で検索ワード・URLが引き継がれる。
  */
 export default function HomePage() {
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { isAdmin, loading: authLoading } = useAuth()
 
@@ -145,7 +145,8 @@ export default function HomePage() {
         quiz: entry.quiz,
       })
       setToast('辞書に登録しました')
-      setTimeout(() => navigate(`/dictionary/${word.id}`), 900)
+      // 遷移せずスレッドを継続する。以降の再登録は「更新」扱いにする。
+      setDuplicate(word)
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : '登録に失敗しました。')
     } finally {
@@ -167,7 +168,7 @@ export default function HomePage() {
         quiz: entry.quiz,
       })
       setToast('更新しました')
-      setTimeout(() => navigate(`/dictionary/${word.id}`), 900)
+      setDuplicate(word)
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : '更新に失敗しました。')
     } finally {
@@ -176,6 +177,12 @@ export default function HomePage() {
   }
 
   const handleChatInputHeightChange = useCallback((height: number) => setChatInputHeight(height), [])
+
+  // 継続質問の吹き出しが追加されたら最下部（最新のやりとり）まで自動スクロールする。
+  useEffect(() => {
+    if (conversation.length <= 1 && !followUpLoading) return
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+  }, [conversation.length, followUpLoading])
 
   const geminiDisabledReason = authLoading
     ? null
@@ -210,6 +217,8 @@ export default function HomePage() {
           )}
         </p>
       )}
+
+      {lastQuery !== '' && <ChatBubble role="user" text={lastQuery} />}
 
       {genError && <p className="text-sm text-app-danger">{genError}</p>}
 
@@ -303,33 +312,17 @@ export default function HomePage() {
           {conversation.length > 1 && (
             <div className="space-y-3 border-t border-app-border pt-4">
               {conversation.slice(1).map((msg, i) => (
-                <div key={i} className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${
-                      msg.role === 'user' ? 'bg-app-accent text-app-on-accent' : 'bg-app-surface-2 text-app-text'
-                    }`}
-                  >
-                    {msg.role === 'user' ? (
-                      <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                    ) : (
-                      <MarkdownView>{msg.text}</MarkdownView>
-                    )}
-                  </div>
-                </div>
+                <ChatBubble key={i} role={msg.role} text={msg.text} />
               ))}
             </div>
           )}
 
-          {followUpLoading && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl bg-app-surface-2 px-4 py-2 text-sm text-app-text-muted">考え中...</div>
-            </div>
-          )}
+          {followUpLoading && <ChatBubble role="model" text="考え中..." muted />}
           {followUpError && <p className="text-sm text-app-danger">{followUpError}</p>}
         </div>
       )}
 
-      {generating && !entry && <p className="text-sm text-app-text-muted">生成中...</p>}
+      {generating && !entry && <ChatBubble role="model" text="考え中..." muted />}
 
       <ChatInput
         value={input}

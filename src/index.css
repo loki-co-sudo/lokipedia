@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* モバイルで横に数px スライドしないよう、横方向のはみ出しを遮断する。
+   clip はスクロールコンテナを作らないため position: sticky 等に影響しない（hidden はフォールバック）。 */
+html,
+body {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 /* セマンティックトークン。docs/DESIGN.md §5.5 の表が正。data-theme はバンドル読み込み前に
    index.html のインラインスクリプトが設定する（FOUC 防止）。:root 単体はその前段のフォールバック。 */
 :root,

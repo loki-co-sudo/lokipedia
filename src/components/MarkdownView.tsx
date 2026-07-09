@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown'
 export default function MarkdownView({ children }: { children: string }) {
   return (
     <div
-      className="space-y-2 text-sm leading-relaxed text-app-text
+      className="space-y-2 text-sm leading-relaxed break-words text-app-text
         [&_h1]:mt-3 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:first:mt-0
         [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-bold [&_h2]:first:mt-0
         [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-bold
