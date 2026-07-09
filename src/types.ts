@@ -1,0 +1,51 @@
+// 共有型定義。docs/DESIGN.md §3 が仕様の正 — 変更時は必ず両方を更新すること。
+// DB (Postgres) は snake_case、アプリ内は camelCase。変換は src/lib/repository.ts に閉じ込める。
+
+export interface Word {
+  id: string
+  term: string
+  /** Markdown */
+  definition: string
+  tags: string[]
+  sourceUrl: string | null
+  /** ISO 8601 */
+  createdAt: string
+  updatedAt: string
+}
+
+export type ChoiceIndex = 0 | 1 | 2 | 3
+
+export interface Quiz {
+  id: string
+  wordId: string
+  question: string
+  choices: [string, string, string, string]
+  correctIndex: ChoiceIndex
+  /** Markdown */
+  explanation: string
+  createdAt: string
+}
+
+export interface QuizHistoryEntry {
+  /** Dexie auto-increment */
+  id?: number
+  quizId: string
+  wordId: string
+  selectedIndex: number
+  isCorrect: boolean
+  answeredAt: string
+}
+
+/** Gemini からの生成結果（Supabase 保存前のプレビューに使う） */
+export interface GeneratedEntry {
+  term: string
+  definition: string
+  /** ちょうど3つ */
+  tags: string[]
+  quiz: {
+    question: string
+    choices: [string, string, string, string]
+    correctIndex: ChoiceIndex
+    explanation: string
+  }
+}
