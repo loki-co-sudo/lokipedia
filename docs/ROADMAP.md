@@ -35,11 +35,9 @@
 - [x] `src/lib/db.ts`（Dexie）: DESIGN.md §2.2 のストア定義。全件同期関数 `syncFromSupabase()` は Supabase アクセスを伴うため repository.ts に実装（CLAUDE.md「Supabase/IndexedDB アクセスは repository.ts に集約」を優先、db.ts はスキーマ定義のみに専念）。読み取り系はオフライン時 IndexedDB にフォールバック。
 
 ### 受け入れ条件
-- [x] 設定画面から管理者ログイン/ログアウトができ、リロード後もセッションが維持される（supabase-js の Auth セッションは localStorage 永続化がデフォルトのため実装済み。実credentials での動作確認は下記メモの通り管理者に依頼）。
+- [x] 設定画面から管理者ログイン/ログアウトができ、リロード後もセッションが維持される。**管理者が実際のアカウントで確認済み**（ログイン成功・リロード後のセッション維持ともにOK）。
 - [x] 未ログインのブラウザから Supabase への INSERT が RLS で拒否されることを確認。`curl` で anon キーによる `words` テーブルへの直接 INSERT を実行し `401 / 42501 new row violates row-level security policy for table "words"` を確認。SELECT は `200` で許可されることも確認済み。
 - [x] `syncFromSupabase()` 後、DevTools の IndexedDB に words/quizzes が入っている。Playwright で `/settings` の「今すぐ同期」を実行し、IndexedDB に `lokipedia` DB と `words/quizzes/quizHistory/meta` の4ストアが作成されることを確認（現時点では words テーブルが空のため件数は0件、`meta` に `lastSyncedAt` が1件入る）。
-
-**管理者への依頼**: 実際の管理者アカウント（メール+パスワード）でのログイン成功、リロード後のセッション維持は実credentials がないと確認できません。設定画面からログイン → リロードしてログイン状態が保たれるかご確認ください。
 
 ---
 
