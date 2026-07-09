@@ -53,3 +53,10 @@ export interface GeneratedEntry {
     explanation: string
   }
 }
+
+/** 継続質問（docs/DESIGN.md §4.1 / §5.1）の会話履歴。メモリ上のみで永続化しない */
+export interface ChatMessage {
+  role: 'user' | 'model'
+  /** Markdown */
+  text: string
+}

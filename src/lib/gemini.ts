@@ -1,7 +1,7 @@
 // Gemini API 連携。docs/DESIGN.md §4 が仕様の正。
 // Gemini の呼び出しはこのモジュールのみが行う（CLAUDE.md 絶対ルール5）。
 
-import type { ChoiceIndex, GeneratedEntry } from '../types'
+import type { ChatMessage, ChoiceIndex, GeneratedEntry } from '../types'
 
 const MODEL = 'gemini-2.5-flash'
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
@@ -132,6 +132,47 @@ export async function generateEntry(
   }
 
   return parsed
+}
+
+/**
+ * 継続質問（docs/DESIGN.md §4.1）。history の末尾は必ず role: 'user'（今回の質問）。
+ * 会話の最初の model ターンには definition の Markdown テキストを入れる想定（呼び出し側の責務）。
+ * responseSchema は使わず、自由な Markdown テキストをそのまま返す。自動リトライはしない。
+ */
+export async function generateFollowUp(history: ChatMessage[], apiKey: string): Promise<string> {
+  let response: Response
+  try {
+    response = await fetch(`${ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: '直前までの解説の文脈を踏まえ、日本語の Markdown で簡潔に回答せよ。' }],
+        },
+        contents: history.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+      }),
+    })
+  } catch (e) {
+    console.error('[gemini] ネットワークエラー', e)
+    throw new Error('Gemini APIに接続できませんでした。ネットワーク接続を確認してください。', { cause: e })
+  }
+
+  if (!response.ok) {
+    const bodyText = await response.text().catch(() => '')
+    console.error('[gemini] APIエラー', response.status, bodyText)
+    if (response.status === 400 || response.status === 403) {
+      throw new Error('Gemini APIキーが無効です。設定画面でキーを確認してください。')
+    }
+    throw new Error(`Gemini APIの呼び出しに失敗しました（HTTP ${response.status}）。`)
+  }
+
+  const json: unknown = await response.json()
+  const text = extractResponseText(json)
+  if (text === null) {
+    console.error('[gemini] 応答にテキストが含まれていません', json)
+    throw new Error('Gemini APIの応答が空でした。')
+  }
+  return text
 }
 
 function extractResponseText(json: unknown): string | null {

@@ -172,17 +172,17 @@
 
 **ゴール**: AI の回答後、同じ入力欄から追加質問して会話を続けられる（DESIGN.md §4.1, §5.1）。
 
-- [ ] `src/types.ts`: `ChatMessage` を追加（DESIGN.md §3）。
-- [ ] `src/lib/gemini.ts`: `generateFollowUp(history: ChatMessage[], apiKey: string): Promise<string>`。`contents` に role 付き履歴、`responseSchema` なし、自動リトライなし、エラーは日本語（既存と同方針）。
-- [ ] `src/pages/HomePage.tsx`: 会話 state（`ChatMessage[]`。最初の model ターンは `definition` の Markdown）。エントリカードの下に user 吹き出し / model の Markdown 吹き出し（MarkdownView）を追記。継続質問の送信中はローディング表示。
-- [ ] 「新しく調べる」ボタン: 会話・エントリカードを全クリアして初期状態へ。
-- [ ] 「再生成」: 継続質問の履歴を破棄して初回入力で引き直す（破棄される旨を注記）。
-- [ ] 登録/更新ボタンはエントリカード上に残り、継続質問後も動作する。継続質問の内容は保存されない。
+- [x] `src/types.ts`: `ChatMessage` を追加（DESIGN.md §3）。
+- [x] `src/lib/gemini.ts`: `generateFollowUp(history: ChatMessage[], apiKey: string): Promise<string>`。`contents` に role 付き履歴、`responseSchema` なし、自動リトライなし、エラーは日本語（既存と同方針）。
+- [x] `src/pages/HomePage.tsx`: 会話 state（`ChatMessage[]`。最初の model ターンは `definition` の Markdown）。エントリカードの下に user 吹き出し / model の Markdown 吹き出し（MarkdownView）を追記。継続質問の送信中はローディング表示。
+- [x] 「新しく調べる」ボタン: 会話・エントリカードを全クリアして初期状態へ。
+- [x] 「再生成」: 継続質問の履歴を破棄して初回入力で引き直す（破棄される旨を注記）。
+- [x] 登録/更新ボタンはエントリカード上に残り、継続質問後も動作する。継続質問の内容は保存されない。
 
 ### 受け入れ条件
-- [ ] Playwright（モック）: 生成 → 追加質問 → Markdown 回答が吹き出し表示 → さらに「辞書に登録」が正常動作。
-- [ ] 2回目の追加質問のリクエストボディに、それまでの会話履歴が role 付きで含まれる（リクエスト検証）。
-- [ ] 継続質問がエラーになっても会話とエントリカードは消えず、日本語エラーが表示される（自動リトライしない）。
+- [ ] Playwright（モック）: 生成 → 追加質問 → Markdown 回答が吹き出し表示 → さらに「辞書に登録」が正常動作。**Playwright未導入のため未実施**。`HomePage.tsx` のコードレビューで、追加質問後も `entry`/`duplicate` 状態が保持され登録ボタンが動作可能なことを確認済み。
+- [x] 2回目の追加質問のリクエストボディに、それまでの会話履歴が role 付きで含まれる（リクエスト検証）。`src/lib/gemini.test.ts` の `generateFollowUp` テストで `contents` に role 付き履歴がそのまま渡ることを確認。
+- [x] 継続質問がエラーになっても会話とエントリカードは消えず、日本語エラーが表示される（自動リトライしない）。`handleFollowUp` はエラー時も `conversation`/`entry` を保持したまま `followUpError` のみ設定する実装。`generateFollowUp` のHTTPエラーテストで日本語エラーメッセージも確認。
 
 ---
 
