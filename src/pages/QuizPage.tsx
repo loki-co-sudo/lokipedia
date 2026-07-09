@@ -136,7 +136,7 @@ export default function QuizPage() {
   }
 
   if (loadError) {
-    return <p className="text-sm text-rose-600">{loadError}</p>
+    return <p className="text-sm text-app-danger">{loadError}</p>
   }
 
   if (stage === 'setup') {
@@ -146,13 +146,13 @@ export default function QuizPage() {
 
         {allTags.length > 0 && (
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-slate-600">タグで絞り込み（未選択なら全件）</p>
+            <p className="text-sm font-semibold text-app-text-muted">タグで絞り込み（未選択なら全件）</p>
             <TagToggleList tags={allTags} selected={selectedTags} onToggle={toggleTag} />
           </div>
         )}
 
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-slate-600">出題数</p>
+          <p className="text-sm font-semibold text-app-text-muted">出題数</p>
           <div className="flex gap-2">
             {([5, 10, 'all'] as const).map((opt) => (
               <button
@@ -160,7 +160,7 @@ export default function QuizPage() {
                 type="button"
                 onClick={() => setCountOption(opt)}
                 className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                  countOption === opt ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600'
+                  countOption === opt ? 'bg-app-accent text-app-on-accent' : 'bg-app-surface-2 text-app-text-muted'
                 }`}
               >
                 {opt === 'all' ? '全部' : `${opt}問`}
@@ -169,17 +169,17 @@ export default function QuizPage() {
           </div>
         </div>
 
-        <p className="text-sm text-slate-500">対象クイズ: {eligibleQuizzes.length}問</p>
+        <p className="text-sm text-app-text-muted">対象クイズ: {eligibleQuizzes.length}問</p>
 
         {eligibleQuizzes.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-400">
+          <p className="rounded-xl border border-dashed border-app-border p-8 text-center text-sm text-app-text-muted">
             対象のクイズがありません。
           </p>
         ) : (
           <button
             type="button"
             onClick={handleStart}
-            className="w-full rounded-xl bg-sky-600 px-4 py-3 font-semibold text-white"
+            className="w-full rounded-xl bg-app-accent px-4 py-3 font-semibold text-app-on-accent"
           >
             クイズを始める
           </button>
@@ -192,17 +192,17 @@ export default function QuizPage() {
     const current = session[currentIndex]
     return (
       <div className="space-y-4">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-app-text-muted">
           {currentIndex + 1} / {session.length} 問
         </p>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="rounded-xl border border-app-border bg-app-surface p-4">
           <p className="font-semibold">{current.quiz.question}</p>
           <ul className="mt-3 space-y-2">
             {current.shuffled.choices.map((choice, i) => {
-              let style = 'bg-slate-50 text-slate-700'
+              let style = 'bg-app-surface-2 text-app-text'
               if (answered) {
-                if (i === current.shuffled.correctIndex) style = 'bg-emerald-100 text-emerald-800 font-semibold'
-                else if (i === selectedChoice) style = 'bg-rose-100 text-rose-800'
+                if (i === current.shuffled.correctIndex) style = 'bg-app-success/15 text-app-success font-semibold'
+                else if (i === selectedChoice) style = 'bg-app-danger/15 text-app-danger'
               }
               return (
                 <li key={i}>
@@ -223,19 +223,19 @@ export default function QuizPage() {
             <div className="mt-4 space-y-3">
               <p
                 className={`text-sm font-semibold ${
-                  selectedChoice === current.shuffled.correctIndex ? 'text-emerald-600' : 'text-rose-600'
+                  selectedChoice === current.shuffled.correctIndex ? 'text-app-success' : 'text-app-danger'
                 }`}
               >
                 {selectedChoice === current.shuffled.correctIndex ? '正解！' : '不正解'}
               </p>
               <div>
-                <p className="text-xs font-semibold text-slate-500">解説</p>
+                <p className="text-xs font-semibold text-app-text-muted">解説</p>
                 <MarkdownView>{current.quiz.explanation}</MarkdownView>
               </div>
               <button
                 type="button"
                 onClick={handleNext}
-                className="w-full rounded-xl bg-sky-600 px-4 py-3 font-semibold text-white"
+                className="w-full rounded-xl bg-app-accent px-4 py-3 font-semibold text-app-on-accent"
               >
                 {currentIndex + 1 >= session.length ? '結果を見る' : '次へ'}
               </button>
@@ -251,20 +251,20 @@ export default function QuizPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">結果</h1>
-      <p className="rounded-xl border border-slate-200 bg-white p-4 text-center text-lg font-semibold">
+      <p className="rounded-xl border border-app-border bg-app-surface p-4 text-center text-lg font-semibold">
         {session.length}問中 {score}問正解
       </p>
 
       {wrongEntries.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-slate-600">間違えた問題</p>
+          <p className="text-sm font-semibold text-app-text-muted">間違えた問題</p>
           <ul className="space-y-2">
             {wrongEntries.map((entry, i) => (
-              <li key={`${entry.quiz.id}-${i}`} className="rounded-xl border border-slate-200 bg-white p-3">
-                <Link to={`/dictionary/${entry.word.id}`} className="text-sm font-semibold text-sky-600 underline">
+              <li key={`${entry.quiz.id}-${i}`} className="rounded-xl border border-app-border bg-app-surface p-3">
+                <Link to={`/dictionary/${entry.word.id}`} className="text-sm font-semibold text-app-accent underline">
                   {entry.word.term}
                 </Link>
-                <p className="mt-1 text-sm text-slate-600">{entry.quiz.question}</p>
+                <p className="mt-1 text-sm text-app-text-muted">{entry.quiz.question}</p>
               </li>
             ))}
           </ul>
@@ -274,7 +274,7 @@ export default function QuizPage() {
       <button
         type="button"
         onClick={handleRestart}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 font-semibold text-slate-700"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-app-border px-4 py-3 font-semibold text-app-text"
       >
         <RotateCcw className="h-4 w-4" />
         もう一度

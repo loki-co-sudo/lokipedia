@@ -13,7 +13,9 @@ export default function TagToggleList({ tags, selected, onToggle }: TagToggleLis
           type="button"
           onClick={() => onToggle(tag)}
           className={`rounded-full px-3 py-1 text-xs font-medium ${
-            selected.includes(tag) ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            selected.includes(tag)
+              ? 'bg-app-accent text-app-on-accent'
+              : 'bg-app-surface-2 text-app-text-muted hover:bg-app-border'
           }`}
         >
           {tag}

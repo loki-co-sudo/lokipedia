@@ -140,7 +140,7 @@ export default function WordDetailPage() {
   }
 
   if (word === null) {
-    return <p className="text-sm text-rose-600">単語が見つかりませんでした。</p>
+    return <p className="text-sm text-app-danger">単語が見つかりませんでした。</p>
   }
 
   const correctCount = history.filter((h) => h.isCorrect).length
@@ -154,14 +154,14 @@ export default function WordDetailPage() {
         <h1 className="text-2xl font-bold break-words">{word.term}</h1>
 
         {isAdmin && (
-          <div className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+          <div className="mt-1 flex items-center gap-2 text-sm text-app-text-muted">
             {editingReading === null ? (
               <>
                 <span>よみがな: {word.reading ?? '未設定'}</span>
                 <button
                   type="button"
                   onClick={() => setEditingReading(word.reading ?? '')}
-                  className="text-xs text-slate-400 underline"
+                  className="text-xs text-app-text-muted underline"
                 >
                   編集
                 </button>
@@ -173,20 +173,20 @@ export default function WordDetailPage() {
                   value={editingReading}
                   onChange={(e) => setEditingReading(e.target.value)}
                   placeholder="ひらがな"
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-sky-500"
+                  className="rounded-lg border border-app-border px-2 py-1 text-sm outline-none focus:border-app-accent"
                 />
                 <button
                   type="button"
                   onClick={() => void handleSaveReading()}
                   disabled={savingReading}
-                  className="rounded-lg bg-sky-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-40"
+                  className="rounded-lg bg-app-accent px-3 py-1 text-xs font-semibold text-app-on-accent disabled:opacity-40"
                 >
                   {savingReading ? '保存中...' : '保存'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditingReading(null)}
-                  className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700"
+                  className="rounded-lg border border-app-border px-3 py-1 text-xs font-semibold text-app-text"
                 >
                   キャンセル
                 </button>
@@ -198,7 +198,7 @@ export default function WordDetailPage() {
         {editingTags === null ? (
           <div className="mt-2 flex flex-wrap items-center gap-1">
             {word.tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">
+              <span key={tag} className="rounded-full bg-app-accent/10 px-2 py-0.5 text-xs font-medium text-app-accent">
                 {tag}
               </span>
             ))}
@@ -206,7 +206,7 @@ export default function WordDetailPage() {
               <button
                 type="button"
                 onClick={() => setEditingTags(word.tags)}
-                className="ml-1 text-xs text-slate-400 underline"
+                className="ml-1 text-xs text-app-text-muted underline"
               >
                 編集
               </button>
@@ -220,14 +220,14 @@ export default function WordDetailPage() {
                 type="button"
                 onClick={() => void handleSaveTags()}
                 disabled={savingTags}
-                className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                className="rounded-lg bg-app-accent px-3 py-1.5 text-xs font-semibold text-app-on-accent disabled:opacity-40"
               >
                 {savingTags ? '保存中...' : '保存'}
               </button>
               <button
                 type="button"
                 onClick={() => setEditingTags(null)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700"
+                className="rounded-lg border border-app-border px-3 py-1.5 text-xs font-semibold text-app-text"
               >
                 キャンセル
               </button>
@@ -236,7 +236,7 @@ export default function WordDetailPage() {
         )}
       </div>
 
-      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {error && <p className="text-sm text-app-danger">{error}</p>}
 
       <MarkdownView>{word.definition}</MarkdownView>
 
@@ -248,20 +248,20 @@ export default function WordDetailPage() {
               type="button"
               onClick={() => void handleAddQuiz()}
               disabled={addingQuiz}
-              className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40"
+              className="flex items-center gap-1 rounded-lg border border-app-border px-3 py-1.5 text-xs font-semibold text-app-text disabled:opacity-40"
             >
               <Sparkles className="h-3.5 w-3.5" />
               {addingQuiz ? '生成中...' : 'クイズを追加生成'}
             </button>
           )}
         </div>
-        {addQuizError && <p className="text-sm text-rose-600">{addQuizError}</p>}
+        {addQuizError && <p className="text-sm text-app-danger">{addQuizError}</p>}
         {quizzes.length === 0 ? (
-          <p className="text-sm text-slate-400">まだクイズがありません。</p>
+          <p className="text-sm text-app-text-muted">まだクイズがありません。</p>
         ) : (
           <ul className="space-y-2">
             {quizzes.map((quiz, i) => (
-              <li key={quiz.id} className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
+              <li key={quiz.id} className="rounded-xl border border-app-border bg-app-surface p-3 text-sm">
                 問{i + 1}: {quiz.question}
               </li>
             ))}
@@ -272,17 +272,17 @@ export default function WordDetailPage() {
       <section className="space-y-2">
         <h2 className="font-semibold">この端末での解答履歴</h2>
         {history.length === 0 ? (
-          <p className="text-sm text-slate-400">まだこの単語のクイズに解答していません。</p>
+          <p className="text-sm text-app-text-muted">まだこの単語のクイズに解答していません。</p>
         ) : (
           <div className="space-y-2 text-sm">
-            <p className="text-slate-600">
+            <p className="text-app-text-muted">
               正答率: {accuracy}%（{correctCount} / {history.length} 問）
             </p>
             <ul className="space-y-1">
               {history.slice(0, 5).map((h, i) => (
-                <li key={h.id ?? i} className="flex items-center justify-between text-slate-500">
+                <li key={h.id ?? i} className="flex items-center justify-between text-app-text-muted">
                   <span>{new Date(h.answeredAt).toLocaleString('ja-JP')}</span>
-                  <span className={h.isCorrect ? 'text-emerald-600' : 'text-rose-600'}>
+                  <span className={h.isCorrect ? 'text-app-success' : 'text-app-danger'}>
                     {h.isCorrect ? '正解' : '不正解'}
                   </span>
                 </li>
@@ -297,7 +297,7 @@ export default function WordDetailPage() {
           type="button"
           onClick={() => void handleDelete()}
           disabled={deleting}
-          className="flex items-center gap-2 rounded-xl border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-600 disabled:opacity-40"
+          className="flex items-center gap-2 rounded-xl border border-app-danger/40 px-4 py-2 text-sm font-semibold text-app-danger disabled:opacity-40"
         >
           <Trash2 className="h-4 w-4" />
           {deleting ? '削除中...' : 'この単語を削除'}

@@ -38,17 +38,17 @@ export default function App() {
 
   if (supabaseConfigError) {
     return (
-      <div className="flex min-h-dvh items-center justify-center p-6 text-center">
+      <div className="flex min-h-dvh items-center justify-center bg-app-bg p-6 text-center">
         <div className="max-w-sm space-y-2">
-          <p className="text-lg font-bold text-rose-600">設定エラー</p>
-          <p className="text-sm text-slate-600">{supabaseConfigError}</p>
+          <p className="text-lg font-bold text-app-danger">設定エラー</p>
+          <p className="text-sm text-app-text-muted">{supabaseConfigError}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-dvh bg-slate-50 text-slate-900">
+    <div className="min-h-dvh bg-app-bg text-app-text">
       <main className="mx-auto max-w-2xl px-4 pt-4 pb-24">
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -61,7 +61,7 @@ export default function App() {
       </main>
 
       {/* h-16(=4rem) は ChatInput（src/components/ChatInput.tsx）の bottom オフセット計算の前提になっている */}
-      <nav className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed inset-x-0 bottom-0 border-t border-app-border bg-app-surface pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto flex h-16 max-w-2xl">
           {tabs.map(({ to, label, icon: Icon }) => (
             <NavLink
@@ -70,7 +70,7 @@ export default function App() {
               end={to === '/'}
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-0.5 text-xs ${
-                  isActive ? 'text-sky-600' : 'text-slate-400'
+                  isActive ? 'text-app-accent' : 'text-app-text-muted'
                 }`
               }
             >

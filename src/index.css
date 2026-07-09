@@ -1,1 +1,64 @@
 @import "tailwindcss";
+
+/* セマンティックトークン。docs/DESIGN.md §5.5 の表が正。data-theme はバンドル読み込み前に
+   index.html のインラインスクリプトが設定する（FOUC 防止）。:root 単体はその前段のフォールバック。 */
+:root,
+:root[data-theme="loki"] {
+  --app-bg: #1e1b4b;
+  --app-surface: #312e81;
+  --app-surface-2: #272364;
+  --app-border: #4338ca;
+  --app-text: #eef2ff;
+  --app-text-muted: #a5b4fc;
+  --app-accent: #f59e0b;
+  --app-accent-hover: #fbbf24;
+  --app-on-accent: #1e1b4b;
+  --app-success: #34d399;
+  --app-danger: #fb7185;
+  --app-warning: #fbbf24;
+}
+
+:root[data-theme="light"] {
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-surface-2: #f1f5f9;
+  --app-border: #e2e8f0;
+  --app-text: #0f172a;
+  --app-text-muted: #64748b;
+  --app-accent: #4338ca;
+  --app-accent-hover: #3730a3;
+  --app-on-accent: #ffffff;
+  --app-success: #059669;
+  --app-danger: #e11d48;
+  --app-warning: #d97706;
+}
+
+:root[data-theme="dark"] {
+  --app-bg: #0f172a;
+  --app-surface: #1e293b;
+  --app-surface-2: #0f172a;
+  --app-border: #334155;
+  --app-text: #f1f5f9;
+  --app-text-muted: #94a3b8;
+  --app-accent: #818cf8;
+  --app-accent-hover: #a5b4fc;
+  --app-on-accent: #1e1b4b;
+  --app-success: #34d399;
+  --app-danger: #fb7185;
+  --app-warning: #fbbf24;
+}
+
+@theme inline {
+  --color-app-bg: var(--app-bg);
+  --color-app-surface: var(--app-surface);
+  --color-app-surface-2: var(--app-surface-2);
+  --color-app-border: var(--app-border);
+  --color-app-text: var(--app-text);
+  --color-app-text-muted: var(--app-text-muted);
+  --color-app-accent: var(--app-accent);
+  --color-app-accent-hover: var(--app-accent-hover);
+  --color-app-on-accent: var(--app-on-accent);
+  --color-app-success: var(--app-success);
+  --color-app-danger: var(--app-danger);
+  --color-app-warning: var(--app-warning);
+}

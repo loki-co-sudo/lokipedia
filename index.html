@@ -1,9 +1,21 @@
 <!doctype html>
 <html lang="ja">
   <head>
+    <script>
+      // バンドル読み込み前にテーマを確定させる（docs/DESIGN.md §5.5）。FOUC 防止のため index.css より先に実行する。
+      (function () {
+        try {
+          var stored = localStorage.getItem('lokipedia:theme')
+          var theme = stored === 'light' || stored === 'dark' || stored === 'loki' ? stored : 'loki'
+          document.documentElement.setAttribute('data-theme', theme)
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'loki')
+        }
+      })()
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#4338ca" />
+    <meta name="theme-color" content="#1e1b4b" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />

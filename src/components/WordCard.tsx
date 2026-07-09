@@ -6,19 +6,19 @@ export default function WordCard({ word }: { word: Word }) {
   return (
     <Link
       to={`/dictionary/${word.id}`}
-      className="block rounded-xl border border-slate-200 bg-white p-4 transition hover:border-sky-300 hover:shadow-sm"
+      className="block rounded-xl border border-app-border bg-app-surface p-4 transition hover:border-app-accent/50 hover:shadow-sm"
     >
-      <h3 className="font-bold text-slate-900">{word.term}</h3>
+      <h3 className="font-bold break-words text-app-text">{word.term}</h3>
       {word.tags.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1">
           {word.tags.map((tag) => (
-            <span key={tag} className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">
+            <span key={tag} className="rounded-full bg-app-accent/10 px-2 py-0.5 text-xs font-medium text-app-accent">
               {tag}
             </span>
           ))}
         </div>
       )}
-      <p className="mt-2 line-clamp-2 text-sm text-slate-500">{stripMarkdown(word.definition)}</p>
+      <p className="mt-2 line-clamp-2 text-sm text-app-text-muted">{stripMarkdown(word.definition)}</p>
     </Link>
   )
 }

@@ -206,18 +206,18 @@
 
 **ゴール**: サイト全体をセマンティックトークンに載せ替え、設定画面で3テーマを切替できる（DESIGN.md §5.5。色値はこの表が正）。
 
-- [ ] `src/index.css`: `:root[data-theme="light|dark|loki"]` に §5.5 の表どおりの CSS 変数を定義し、`@theme inline` で `--color-app-*` にマッピング。
-- [ ] `index.html`: バンドル前に localStorage（`lokipedia:theme`、無ければ `'loki'`）を読んで `data-theme` を設定するインラインスクリプト（FOUC 防止）。
-- [ ] `src/lib/settings.ts`: `lokipedia:theme` の get/set。`src/hooks/useTheme.ts`: テーマ変更（`data-theme` 反映 + `<meta name="theme-color">` 更新 + 永続化）。
-- [ ] **全ページ・全コンポーネント**の色クラス直書き（`slate-*` `sky-*` `emerald-*` `rose-*` `amber-*` 等）を `app-*` トークン utility に置換。正解/エラー/警告も `app-success` / `app-danger` / `app-warning` へ。
-- [ ] `src/pages/SettingsPage.tsx`: 3テーマ選択 UI（スウォッチ付きボタン、即時反映、ログイン不要）。
-- [ ] `vite.config.ts`: manifest の `theme_color` / `background_color` を `#1e1b4b` に更新。
+- [x] `src/index.css`: `:root[data-theme="light|dark|loki"]` に §5.5 の表どおりの CSS 変数を定義し、`@theme inline` で `--color-app-*` にマッピング。
+- [x] `index.html`: バンドル前に localStorage（`lokipedia:theme`、無ければ `'loki'`）を読んで `data-theme` を設定するインラインスクリプト（FOUC 防止）。
+- [x] `src/lib/settings.ts`: `lokipedia:theme` の get/set。`src/hooks/useTheme.ts`: テーマ変更（`data-theme` 反映 + `<meta name="theme-color">` 更新 + 永続化）。
+- [x] **全ページ・全コンポーネント**の色クラス直書き（`slate-*` `sky-*` `emerald-*` `rose-*` `amber-*` 等）を `app-*` トークン utility に置換。正解/エラー/警告も `app-success` / `app-danger` / `app-warning` へ。
+- [x] `src/pages/SettingsPage.tsx`: 3テーマ選択 UI（スウォッチ付きボタン、即時反映、ログイン不要）。
+- [x] `vite.config.ts`: manifest の `theme_color` / `background_color` を `#1e1b4b` に更新。
 
 ### 受け入れ条件
-- [ ] 3テーマそれぞれで全6ルートを Playwright スクリーンショット確認し、文字が背景に埋もれない（特にロキテーマの amber ボタン上は `app-on-accent` の濃紺）。
-- [ ] リロード後・`npm run preview`（PWA）再起動後もテーマが維持され、初期描画で別テーマが一瞬見えない。
-- [ ] `grep -rE '(slate|sky|emerald|rose|amber|indigo)-[0-9]' src/pages src/components src/App.tsx` がヒット0件（例外を残す場合は理由コメント必須）。
-- [ ] `npm run build` / `npm run test` が通る。
+- [ ] 3テーマそれぞれで全6ルートを Playwright スクリーンショット確認し、文字が背景に埋もれない（特にロキテーマの amber ボタン上は `app-on-accent` の濃紺）。**Playwright未導入のため未実施**。`app-on-accent` はDESIGN.mdの表どおり light/dark/lokiいずれも十分なコントラストの値（白 or 濃紺）を設定済みで、コードレビューで確認。実機・ブラウザでの目視確認は管理者に依頼したい。
+- [x] リロード後・`npm run preview`（PWA）再起動後もテーマが維持され、初期描画で別テーマが一瞬見えない。ビルド後の `dist/index.html` を確認し、テーマ設定インラインスクリプトが `<script type="module">` と `<link rel="stylesheet">` より前（`<head>`内の最初の要素）に出力されることを確認済み。
+- [x] `grep -rE '(slate|sky|emerald|rose|amber|indigo)-[0-9]' src/pages src/components src/App.tsx` がヒット0件（例外を残す場合は理由コメント必須）。実行し0件を確認。
+- [x] `npm run build` / `npm run test` が通る。
 
 ---
 

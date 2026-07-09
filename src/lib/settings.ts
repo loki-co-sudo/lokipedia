@@ -26,3 +26,16 @@ export function getDictionarySort(): DictionarySort {
 export function setDictionarySort(sort: DictionarySort): void {
   localStorage.setItem(DICTIONARY_SORT_STORAGE_KEY, sort)
 }
+
+const THEME_STORAGE_KEY = 'lokipedia:theme'
+
+export type Theme = 'light' | 'dark' | 'loki'
+
+export function getTheme(): Theme {
+  const value = localStorage.getItem(THEME_STORAGE_KEY)
+  return value === 'light' || value === 'dark' ? value : 'loki'
+}
+
+export function setTheme(theme: Theme): void {
+  localStorage.setItem(THEME_STORAGE_KEY, theme)
+}

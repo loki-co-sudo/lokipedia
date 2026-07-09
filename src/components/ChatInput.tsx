@@ -54,10 +54,10 @@ export default function ChatInput({ value, onChange, onSend, disabled, placehold
   return (
     <div
       ref={containerRef}
-      className="fixed inset-x-0 z-40 border-t border-slate-200 bg-white/95 px-3 pt-2 backdrop-blur"
+      className="fixed inset-x-0 z-40 border-t border-app-border bg-app-bg/95 px-3 pt-2 backdrop-blur"
       style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
     >
-      <div className="mx-auto flex max-w-2xl items-end gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 pb-3">
+      <div className="mx-auto flex max-w-2xl items-end gap-2 rounded-2xl border border-app-border bg-app-surface px-3 py-2 pb-3">
         <textarea
           ref={textareaRef}
           rows={1}
@@ -66,14 +66,14 @@ export default function ChatInput({ value, onChange, onSend, disabled, placehold
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
-          className="max-h-32 min-h-6 flex-1 resize-none overflow-y-auto border-none bg-transparent py-1 text-sm outline-none disabled:opacity-40"
+          className="max-h-32 min-h-6 flex-1 resize-none overflow-y-auto border-none bg-transparent py-1 text-sm text-app-text outline-none disabled:opacity-40"
         />
         <button
           type="button"
           onClick={handleSend}
           disabled={disabled || value.trim() === ''}
           aria-label="送信"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-600 text-white disabled:opacity-40"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-app-accent text-app-on-accent disabled:opacity-40"
         >
           <Send className="h-4 w-4" />
         </button>
