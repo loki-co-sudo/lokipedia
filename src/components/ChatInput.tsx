@@ -66,7 +66,7 @@ export default function ChatInput({ value, onChange, onSend, disabled, placehold
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
-          className="max-h-32 min-h-6 flex-1 resize-none overflow-y-auto border-none bg-transparent py-1 text-sm text-app-text outline-none disabled:opacity-40"
+          className="max-h-32 min-h-6 w-full min-w-0 flex-1 resize-none overflow-y-auto border-none bg-transparent py-1 text-sm text-app-text outline-none disabled:opacity-40"
         />
         <button
           type="button"

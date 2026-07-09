@@ -18,7 +18,7 @@ export default function WordCard({ word }: { word: Word }) {
           ))}
         </div>
       )}
-      <p className="mt-2 line-clamp-2 text-sm text-app-text-muted">{stripMarkdown(word.definition)}</p>
+      <p className="mt-2 line-clamp-2 break-words text-sm text-app-text-muted">{stripMarkdown(word.definition)}</p>
     </Link>
   )
 }

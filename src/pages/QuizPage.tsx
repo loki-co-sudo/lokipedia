@@ -196,7 +196,7 @@ export default function QuizPage() {
           {currentIndex + 1} / {session.length} 問
         </p>
         <div className="rounded-xl border border-app-border bg-app-surface p-4">
-          <p className="font-semibold">{current.quiz.question}</p>
+          <p className="break-words font-semibold">{current.quiz.question}</p>
           <ul className="mt-3 space-y-2">
             {current.shuffled.choices.map((choice, i) => {
               let style = 'bg-app-surface-2 text-app-text'
@@ -210,7 +210,7 @@ export default function QuizPage() {
                     type="button"
                     disabled={answered}
                     onClick={() => handleSelectChoice(i)}
-                    className={`w-full rounded-lg px-3 py-2 text-left text-sm ${style} disabled:cursor-default`}
+                    className={`w-full break-words rounded-lg px-3 py-2 text-left text-sm ${style} disabled:cursor-default`}
                   >
                     {choice}
                   </button>
@@ -261,10 +261,13 @@ export default function QuizPage() {
           <ul className="space-y-2">
             {wrongEntries.map((entry, i) => (
               <li key={`${entry.quiz.id}-${i}`} className="rounded-xl border border-app-border bg-app-surface p-3">
-                <Link to={`/dictionary/${entry.word.id}`} className="text-sm font-semibold text-app-accent underline">
+                <Link
+                  to={`/dictionary/${entry.word.id}`}
+                  className="break-words text-sm font-semibold text-app-accent underline"
+                >
                   {entry.word.term}
                 </Link>
-                <p className="mt-1 text-sm text-app-text-muted">{entry.quiz.question}</p>
+                <p className="mt-1 break-words text-sm text-app-text-muted">{entry.quiz.question}</p>
               </li>
             ))}
           </ul>

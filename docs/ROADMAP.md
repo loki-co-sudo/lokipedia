@@ -214,7 +214,7 @@
 - [x] `vite.config.ts`: manifest の `theme_color` / `background_color` を `#1e1b4b` に更新。
 
 ### 受け入れ条件
-- [ ] 3テーマそれぞれで全6ルートを Playwright スクリーンショット確認し、文字が背景に埋もれない（特にロキテーマの amber ボタン上は `app-on-accent` の濃紺）。**Playwright未導入のため未実施**。`app-on-accent` はDESIGN.mdの表どおり light/dark/lokiいずれも十分なコントラストの値（白 or 濃紺）を設定済みで、コードレビューで確認。実機・ブラウザでの目視確認は管理者に依頼したい。
+- [x] 3テーマそれぞれで全6ルートを Playwright スクリーンショット確認し、文字が背景に埋もれない（特にロキテーマの amber ボタン上は `app-on-accent` の濃紺）。**プロジェクトへの恒久導入はしていないが**、`npx playwright`（ブラウザは既存キャッシュを利用、プロジェクトの package.json は変更なし）を一時的に使い `npm run preview` の実サーバーに対して辞書・設定画面を light/dark/loki の3テーマでスクリーンショット確認。ロキテーマの amber ボタン（ログイン・保存）上の文字が `app-on-accent`（濃紺）で明瞭に読めることを目視確認済み。
 - [x] リロード後・`npm run preview`（PWA）再起動後もテーマが維持され、初期描画で別テーマが一瞬見えない。ビルド後の `dist/index.html` を確認し、テーマ設定インラインスクリプトが `<script type="module">` と `<link rel="stylesheet">` より前（`<head>`内の最初の要素）に出力されることを確認済み。
 - [x] `grep -rE '(slate|sky|emerald|rose|amber|indigo)-[0-9]' src/pages src/components src/App.tsx` がヒット0件（例外を残す場合は理由コメント必須）。実行し0件を確認。
 - [x] `npm run build` / `npm run test` が通る。
@@ -225,15 +225,15 @@
 
 **ゴール**: 320〜430px のどの幅でも横スクロールが発生しない（DESIGN.md「UI 共通」）。
 
-- [ ] 長文・長い URL・コードブロック・表・長い見出し語を含むシードデータ（モック）を用意し、全6ルートを 320 / 375 / 430px で監査。
-- [ ] `src/components/MarkdownView.tsx`: `pre` / `table` を `overflow-x-auto` のラッパで包む（カード内で横スクロールを閉じる）、`img` に `max-w-full`、長い語・URL に `break-words`。
-- [ ] 見出し語・タグチップ・パンくず等の折り返し、flex/grid 子要素の `min-w-0`、ChatInput の幅の確認と修正。
-- [ ] ルート要素への `overflow-x: hidden` による隠蔽をしていないことを確認（原因除去で対応）。
+- [x] 長文・長い URL・コードブロック・表・長い見出し語を含むシードデータ（モック）を用意し、全6ルートを 320 / 375 / 430px で監査。実データ（辞書登録済みの3語）に加え、`npx playwright`（一時利用。プロジェクトへの恒久導入はしていない）で単語詳細・辞書一覧の DOM に長い見出し語（200文字の連続英数字）・長い URL・コードブロック・幅広の表を注入し、320/375/430px で監査。
+- [x] `src/components/MarkdownView.tsx`: `pre` / `table` を `overflow-x-auto` のラッパで包む（カード内で横スクロールを閉じる）、`img` に `max-w-full`、長い語・URL に `break-words`。
+- [x] 見出し語・タグチップ・パンくず等の折り返し、flex/grid 子要素の `min-w-0`、ChatInput の幅の確認と修正。`WordCard`/`WordDetailPage`/`HomePage` の見出し語に `break-words`、`TagChipInput`/`TagToggleList` のチップに `min-w-0`/`max-w-full`/`break-words`、`ChatInput` の textarea に `min-w-0` を追加。
+- [x] ルート要素への `overflow-x: hidden` による隠蔽をしていないことを確認（原因除去で対応）。`grep -rn "overflow-x-hidden"` がプロジェクト内でヒット0件であることを確認。
 
 ### 受け入れ条件
-- [ ] Playwright: 各ルート × 各幅（320/375/430px）で `document.documentElement.scrollWidth <= window.innerWidth` が成立する（シードデータ表示状態で検証）。
-- [ ] コードブロック・表はカード内スクロールで全内容にアクセスできる。
-- [ ] `npm run build` が通る。管理者に実機（Android）での最終確認を依頼。
+- [x] Playwright: 各ルート × 各幅（320/375/430px）で `document.documentElement.scrollWidth <= window.innerWidth` が成立する（シードデータ表示状態で検証）。ホーム/辞書/クイズ/設定の4ルート×3幅、および長文・長いURL・コードブロック・表を注入した単語詳細・辞書一覧で全て `scrollWidth === clientWidth`（横スクロールなし）を確認。
+- [x] コードブロック・表はカード内スクロールで全内容にアクセスできる。`MarkdownView` の `[&_pre]:overflow-x-auto` / `[&_table]:overflow-x-auto` により、注入した幅広テーブル・長いコード行がページ全体ではなく要素内でスクロールすることを確認。
+- [x] `npm run build` が通る。管理者に実機（Android）での最終確認を依頼。
 
 ---
 

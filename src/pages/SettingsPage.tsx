@@ -108,7 +108,7 @@ export default function SettingsPage() {
           <p className="text-sm text-app-text-muted">読み込み中...</p>
         ) : isAdmin ? (
           <div className="space-y-3">
-            <p className="text-sm text-app-success">ログイン中: {session?.user.email}</p>
+            <p className="break-words text-sm text-app-success">ログイン中: {session?.user.email}</p>
             <button
               type="button"
               onClick={() => void signOut()}

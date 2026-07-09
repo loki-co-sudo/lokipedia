@@ -261,7 +261,7 @@ export default function WordDetailPage() {
         ) : (
           <ul className="space-y-2">
             {quizzes.map((quiz, i) => (
-              <li key={quiz.id} className="rounded-xl border border-app-border bg-app-surface p-3 text-sm">
+              <li key={quiz.id} className="break-words rounded-xl border border-app-border bg-app-surface p-3 text-sm">
                 問{i + 1}: {quiz.question}
               </li>
             ))}
