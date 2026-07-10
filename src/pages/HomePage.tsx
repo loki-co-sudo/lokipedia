@@ -287,10 +287,14 @@ export default function HomePage() {
     <div className="space-y-4" style={{ paddingBottom: chatInputHeight + 8 }}>
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
 
-      <h1 className="text-2xl font-bold">lokipedia</h1>
-      <p className="text-sm text-app-text-muted">
-        調べたい単語や「〜について教えて」を入力すると、AIが解説と4択クイズを生成します（管理者のみ）。
-      </p>
+      <div className="flex flex-col items-center gap-3 pt-6 pb-2">
+        <img
+          src="/icon-192.png"
+          alt=""
+          className="h-16 w-16 animate-glow-slow rounded-2xl motion-reduce:animate-none"
+        />
+        <h1 className="font-logo -rotate-2 text-4xl text-app-text">lokipedia</h1>
+      </div>
 
       {geminiDisabledReason && (
         <p className="text-sm text-app-warning">
@@ -413,7 +417,7 @@ export default function HomePage() {
         onChange={setInput}
         onSend={() => void handleSend()}
         disabled={inputDisabled}
-        placeholder={entry ? '追加で質問する...' : '例: PWA / PWAについて教えて'}
+        placeholder={entry ? '追加で質問する...' : 'lokipediaで検索'}
         onHeightChange={handleChatInputHeightChange}
       >
         {entry && (

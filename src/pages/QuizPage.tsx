@@ -66,7 +66,8 @@ export default function QuizPage() {
     if (selectedTags.length === 0) return quizzes
     return quizzes.filter((q) => {
       const word = wordById.get(q.wordId)
-      return word ? selectedTags.every((t) => word.tags.includes(t)) : false
+      // タグは OR 検索: 選択したタグのいずれかを持つ単語のクイズを出題対象にする
+      return word ? selectedTags.some((t) => word.tags.includes(t)) : false
     })
   }, [quizzes, selectedTags, wordById])
 
@@ -147,7 +148,7 @@ export default function QuizPage() {
         {allTags.length > 0 && (
           <div className="space-y-2">
             <p className="text-sm font-semibold text-app-text-muted">タグで絞り込み（未選択なら全件）</p>
-            <TagToggleList tags={allTags} selected={selectedTags} onToggle={toggleTag} />
+            <TagToggleList tags={allTags} selected={selectedTags} onToggle={toggleTag} onBulkChange={setSelectedTags} />
           </div>
         )}
 

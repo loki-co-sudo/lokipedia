@@ -38,7 +38,8 @@ export default function DictionaryPage() {
   const filteredWords = useMemo(() => {
     const query = search.trim().toLowerCase()
     return words.filter((w) => {
-      const matchesTags = selectedTags.every((t) => w.tags.includes(t))
+      // タグは OR 検索: 選択したタグのいずれかを持てばヒット（未選択なら全件）
+      const matchesTags = selectedTags.length === 0 || selectedTags.some((t) => w.tags.includes(t))
       const matchesQuery =
         query === '' || w.term.toLowerCase().includes(query) || w.definition.toLowerCase().includes(query)
       return matchesTags && matchesQuery
@@ -89,7 +90,9 @@ export default function DictionaryPage() {
         ))}
       </div>
 
-      {allTags.length > 0 && <TagToggleList tags={allTags} selected={selectedTags} onToggle={toggleTag} />}
+      {allTags.length > 0 && (
+        <TagToggleList tags={allTags} selected={selectedTags} onToggle={toggleTag} onBulkChange={setSelectedTags} />
+      )}
 
       {loading && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

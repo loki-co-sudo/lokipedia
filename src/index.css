@@ -67,6 +67,22 @@ body {
   --app-warning: #fbbf24;
 }
 
+/* ホームのサイン風ロゴ用。オフライン動作を守るため Web フォントは使わず OS 内蔵の筆記体で代替する。 */
+@theme {
+  --font-logo: 'Snell Roundhand', 'Segoe Script', 'Bradley Hand', 'Brush Script MT', cursive;
+  --animate-glow-slow: glow-slow 3s ease-in-out infinite;
+
+  @keyframes glow-slow {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+}
+
 @theme inline {
   --color-app-bg: var(--app-bg);
   --color-app-surface: var(--app-surface);
