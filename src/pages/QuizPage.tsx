@@ -211,9 +211,10 @@ export default function QuizPage() {
                     type="button"
                     disabled={answered}
                     onClick={() => handleSelectChoice(i)}
-                    className={`w-full break-words rounded-lg px-3 py-2 text-left text-sm ${style} disabled:cursor-default`}
+                    className={`flex w-full gap-2 rounded-lg px-3 py-2 text-left text-sm ${style} disabled:cursor-default`}
                   >
-                    {choice}
+                    <span className="shrink-0 font-semibold">{i + 1}.</span>
+                    <span className="break-words">{choice}</span>
                   </button>
                 </li>
               )
@@ -227,7 +228,9 @@ export default function QuizPage() {
                   selectedChoice === current.shuffled.correctIndex ? 'text-app-success' : 'text-app-danger'
                 }`}
               >
-                {selectedChoice === current.shuffled.correctIndex ? '正解！' : '不正解'}
+                {selectedChoice === current.shuffled.correctIndex
+                  ? '正解！'
+                  : `不正解（正解: ${current.shuffled.correctIndex + 1}）`}
               </p>
               <div>
                 <p className="text-xs font-semibold text-app-text-muted">解説</p>

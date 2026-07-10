@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shuffleArray, shuffleQuizChoices } from './quizShuffle'
+import { shuffleArray, shuffleQuizChoices, stripChoiceLabel } from './quizShuffle'
 
 // 決定的な疑似乱数（シードごとに再現可能な結果を得るため Math.random を使わない）
 function mulberry32(seed: number): () => number {
@@ -25,6 +25,45 @@ describe('shuffleArray', () => {
     const input = [1, 2, 3]
     shuffleArray(input, mulberry32(2))
     expect(input).toEqual([1, 2, 3])
+  })
+})
+
+describe('stripChoiceLabel', () => {
+  it('英字ラベルを除去する', () => {
+    expect(stripChoiceLabel('A. 公開鍵で暗号化する')).toBe('公開鍵で暗号化する')
+    expect(stripChoiceLabel('B．共通鍵を共有する')).toBe('共通鍵を共有する')
+    expect(stripChoiceLabel('C) ハッシュ化する')).toBe('ハッシュ化する')
+    expect(stripChoiceLabel('(D) 署名する')).toBe('署名する')
+    expect(stripChoiceLabel('ｄ: 全角小文字')).toBe('全角小文字')
+  })
+
+  it('数字ラベル（1〜4・丸数字）を除去する', () => {
+    expect(stripChoiceLabel('1. 選択肢の内容')).toBe('選択肢の内容')
+    expect(stripChoiceLabel('４．全角数字')).toBe('全角数字')
+    expect(stripChoiceLabel('① 丸数字')).toBe('丸数字')
+    expect(stripChoiceLabel('(2) 括弧数字')).toBe('括弧数字')
+  })
+
+  it('カタカナラベル（ア〜エ）を除去する', () => {
+    expect(stripChoiceLabel('ア. 選択肢')).toBe('選択肢')
+    expect(stripChoiceLabel('イ、選択肢')).toBe('選択肢')
+    expect(stripChoiceLabel('（ウ）選択肢')).toBe('選択肢')
+  })
+
+  it('区切り記号のない本文はラベルとみなさず除去しない', () => {
+    expect(stripChoiceLabel('C言語')).toBe('C言語')
+    expect(stripChoiceLabel('1080p')).toBe('1080p')
+    expect(stripChoiceLabel('Aレコード')).toBe('Aレコード')
+    expect(stripChoiceLabel('アルゴリズム')).toBe('アルゴリズム')
+  })
+
+  it('除去すると空になる場合は元のテキストを返す', () => {
+    expect(stripChoiceLabel('A.')).toBe('A.')
+    expect(stripChoiceLabel('①')).toBe('①')
+  })
+
+  it('ラベルのない選択肢はそのまま（前後の空白のみ除去）', () => {
+    expect(stripChoiceLabel(' 公開鍵で暗号化する ')).toBe('公開鍵で暗号化する')
   })
 })
 

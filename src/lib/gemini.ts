@@ -37,10 +37,12 @@ function entryRequirements(existingTags: string[], mode: AnswerMode): string {
 - tags: term のジャンルを表す日本語タグをちょうど3つ。以下の既存タグ一覧に近いものがあれば表記揺れを防ぐため必ず再利用すること。
   既存タグ一覧: ${existingTagsText}
 - quiz: 応用情報技術者試験の午前試験に似た、知識の理解を問う4択問題を1問。
-  - question: 問題文
-  - choices: もっともらしい誤答を含む4つの選択肢（ちょうど4つ）
+  **選択肢は出題時に毎回シャッフルして表示されるため、選択肢を番号や記号で参照すると表示と食い違う。以下を厳守すること。**
+  - question: 問題文。選択肢の内容を問題文に含めない。
+  - choices: もっともらしい誤答を含む4つの選択肢（ちょうど4つ）。各選択肢は内容のテキストのみとし、「A.」「1.」「ア」「①」等のラベルや番号を先頭に付けない。
   - correctIndex: 正解の choices 内での添字（0〜3の整数）
   - explanation: 正解の根拠と、誤答がそれぞれ誤りである理由を含む詳しい解説（Markdown）。文体は下記「回答モード」に従う。
+    選択肢に言及するときは「選択肢2」「B」のような番号・記号での参照を絶対に使わず、必ず選択肢の内容を「」で引用して言及する（例:「『公開鍵で暗号化する』が正解である。『共通鍵を共有する』は〜のため誤り」）。
 
 # 回答モード（definition と quiz.explanation の文体にのみ適用する。term / reading / tags / question / choices は中立のまま）
 ${ANSWER_MODE_INSTRUCTIONS[mode]}
