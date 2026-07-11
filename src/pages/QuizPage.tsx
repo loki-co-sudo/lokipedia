@@ -276,9 +276,9 @@ export default function QuizPage() {
         <>
           <Confetti />
           <div className="flex animate-pop-in flex-col items-center gap-3 rounded-xl border border-app-accent bg-app-surface p-6 text-center motion-reduce:animate-none">
-            <div className="relative flex items-center justify-center animate-float-slow motion-reduce:animate-none">
-              <div className="absolute inset-0 -z-10 rounded-full bg-app-accent/30 blur-2xl animate-glow-slow motion-reduce:animate-none" />
-              <LokiPortrait className="h-28 w-24" />
+            <div className="relative h-32 w-32 animate-float-slow overflow-hidden rounded-full border-2 border-app-accent/50 bg-app-surface-2 shadow-lg motion-reduce:animate-none">
+              <div className="absolute inset-0 animate-glow-slow bg-app-accent/35 blur-xl motion-reduce:animate-none" />
+              <LokiPortrait preserveAspectRatio="xMidYMax slice" className="absolute inset-0 h-full w-full" />
             </div>
             <p className="font-semibold text-app-accent">満点達成！</p>
             <p className="break-words text-sm text-app-text-muted">{perfectMessage}</p>

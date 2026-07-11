@@ -1,16 +1,24 @@
 interface LokiPortraitProps {
   className?: string
+  /** 円形メダリオン等、コンテナに合わせて上端基準でトリミングしたいときに指定（例: "xMidYMax slice"）。 */
+  preserveAspectRatio?: string
 }
 
 /**
  * ロキ（トリックスター）のバストアップイラスト。狐面を手に持った男性のシルエット。
  * FoxIcon 同様、色はすべてテーマトークン（app-text / app-accent 系 / app-bg）に追従する。
+ * 肩から先は viewBox の外（y=110 超）まで伸ばしてあり、メダリオン等でトリミングしても不自然な余白が出ない。
  */
-export default function LokiPortrait({ className }: LokiPortraitProps) {
+export default function LokiPortrait({ className, preserveAspectRatio }: LokiPortraitProps) {
   return (
-    <svg viewBox="0 0 100 110" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 100 110"
+      preserveAspectRatio={preserveAspectRatio}
+      className={className}
+      aria-hidden="true"
+    >
       {/* shoulders / chest */}
-      <path d="M 12,110 L 17,74 Q 50,60 83,74 L 88,110 Z" className="fill-app-text" />
+      <path d="M 8,120 L 15,74 Q 50,58 85,74 L 92,120 Z" className="fill-app-text" />
 
       {/* V-neck collar cut */}
       <path d="M 40,74 L 50,90 L 60,74 L 55,72 L 50,80 L 45,72 Z" className="fill-app-bg" />
@@ -22,6 +30,12 @@ export default function LokiPortrait({ className }: LokiPortraitProps) {
       <path
         d="M 50,14 C 68,14 74,29 72,41 C 71,49 64,58 50,58 C 36,58 29,49 28,41 C 26,29 32,14 50,14 Z"
         className="fill-app-text"
+      />
+
+      {/* 頬の陰影（フラットな塗りに立体感を持たせる） */}
+      <path
+        d="M 55,20 C 63,26 66,36 62,46 C 68,40 70,28 62,18 C 59,15 56,17 55,20 Z"
+        className="fill-app-bg opacity-15"
       />
 
       {/* swept hair + cowlick */}
