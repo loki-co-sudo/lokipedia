@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { RotateCcw } from 'lucide-react'
+import lokiPortrait from '../assets/loki-portrait.webp'
 import Confetti from '../components/Confetti'
-import LokiPortrait from '../components/LokiPortrait'
 import MarkdownView from '../components/MarkdownView'
 import Skeleton from '../components/Skeleton'
 import TagToggleList from '../components/TagToggleList'
@@ -276,9 +276,16 @@ export default function QuizPage() {
         <>
           <Confetti />
           <div className="flex animate-pop-in flex-col items-center gap-3 rounded-xl border border-app-accent bg-app-surface p-6 text-center motion-reduce:animate-none">
-            <div className="relative h-32 w-32 animate-float-slow overflow-hidden rounded-full border-2 border-app-accent/50 bg-app-surface-2 shadow-lg motion-reduce:animate-none">
-              <div className="absolute inset-0 animate-glow-slow bg-app-accent/35 blur-xl motion-reduce:animate-none" />
-              <LokiPortrait preserveAspectRatio="xMidYMax slice" className="absolute inset-0 h-full w-full" />
+            <div className="relative flex animate-float-slow items-center justify-center motion-reduce:animate-none">
+              <div className="absolute -inset-3 -z-10 animate-glow-slow rounded-full bg-app-accent/40 blur-xl motion-reduce:animate-none" />
+              <div className="h-32 w-32 overflow-hidden rounded-full border-2 border-app-accent/70 shadow-lg">
+                <img
+                  src={lokiPortrait}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  style={{ objectPosition: '40% 25%' }}
+                />
+              </div>
             </div>
             <p className="font-semibold text-app-accent">満点達成！</p>
             <p className="break-words text-sm text-app-text-muted">{perfectMessage}</p>
