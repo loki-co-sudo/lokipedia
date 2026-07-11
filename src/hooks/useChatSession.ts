@@ -3,12 +3,15 @@
 
 import { createContext, useContext, type Dispatch, type SetStateAction } from 'react'
 import type { AnswerMode } from '../lib/answerMode'
-import type { ChatMessage, GeneratedEntry, Word } from '../types'
+import type { ChatImage, ChatMessage, GeneratedEntry, Word } from '../types'
 
 export interface ChatSessionValue {
   /** 最初に送信した検索ワード（user 吹き出しの表示に使う） */
   lastQuery: string
   setLastQuery: Dispatch<SetStateAction<string>>
+  /** 最初の送信に添付した画像（docs/DESIGN.md §4.4。user 吹き出しの表示に使う） */
+  lastQueryImages: ChatImage[]
+  setLastQueryImages: Dispatch<SetStateAction<ChatImage[]>>
   /** /add（共有受け取り）から引き継いだ出典URL */
   sourceUrl: string | null
   setSourceUrl: Dispatch<SetStateAction<string | null>>

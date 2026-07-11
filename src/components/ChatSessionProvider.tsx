@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { ChatSessionContext } from '../hooks/useChatSession'
 import type { AnswerMode } from '../lib/answerMode'
-import type { ChatMessage, GeneratedEntry, Word } from '../types'
+import type { ChatImage, ChatMessage, GeneratedEntry, Word } from '../types'
 
 /** 会話スレッドの状態を App 直下で保持し、ページ遷移をまたいで維持する（docs/DESIGN.md §5.1）。 */
 export default function ChatSessionProvider({ children }: { children: ReactNode }) {
   const [lastQuery, setLastQuery] = useState('')
+  const [lastQueryImages, setLastQueryImages] = useState<ChatImage[]>([])
   const [sourceUrl, setSourceUrl] = useState<string | null>(null)
   const [entry, setEntry] = useState<GeneratedEntry | null>(null)
   const [entryTags, setEntryTags] = useState<string[]>([])
@@ -15,6 +16,7 @@ export default function ChatSessionProvider({ children }: { children: ReactNode 
 
   function reset() {
     setLastQuery('')
+    setLastQueryImages([])
     setSourceUrl(null)
     setEntry(null)
     setEntryTags([])
@@ -28,6 +30,8 @@ export default function ChatSessionProvider({ children }: { children: ReactNode 
       value={{
         lastQuery,
         setLastQuery,
+        lastQueryImages,
+        setLastQueryImages,
         sourceUrl,
         setSourceUrl,
         entry,

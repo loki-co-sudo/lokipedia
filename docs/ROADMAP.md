@@ -237,6 +237,24 @@
 
 ---
 
+## Phase 13: チャット入力への画像添付
+
+**ゴール**: チャット入力欄（初回の調べる入力・継続質問の両方）から画像を添付して送信でき、テキストの補助情報として Gemini に渡せる（DESIGN.md §4.4, §5.1）。
+
+- [x] `src/types.ts`: `ChatImage` を追加、`ChatMessage.images?: ChatImage[]` を追加（DESIGN.md §3 と一致）。
+- [x] `src/lib/image.ts`: `fileToChatImage(file)` — `image/*` 判定 + canvas で長辺1600px/JPEG品質0.85に縮小 + base64化。`MAX_IMAGES_PER_MESSAGE = 4`。
+- [x] `src/lib/gemini.ts`: `generateEntry(..., images)` / `generateFollowUp` の `contents.parts` に `inlineData` を追加。テキスト空+画像のみの場合のフォールバック文言を追加。`generateEntryFromConversation` は対象外（テキストのみ）。
+- [x] `src/components/ChatInput.tsx`: 添付ボタン（`ImagePlus`）+ サムネイルプレビュー（個別削除）+ 最大4枚の制御。テキスト空でも画像があれば送信可能に。
+- [x] `src/components/ChatBubble.tsx`: user 吹き出しに添付画像のサムネイルを表示。
+- [x] `src/components/ChatSessionProvider.tsx` / `src/hooks/useChatSession.ts`: `lastQueryImages` を追加し、初回送信の添付画像をページ遷移をまたいで保持・表示。
+- [x] `src/pages/HomePage.tsx`: 送信フロー（`handleSend` / `handleGenerate` / `handleFollowUp` / `handleRegenerate` / `handleReset`）に画像を統合。
+
+### 受け入れ条件
+- [x] `npm run build` / `npm run lint` / `npm run test` が通る。
+- [ ] **管理者への依頼**: 実際の Gemini API キーで写真を添付して送信し、（1）初回の調べる入力で画像から主題が特定されること、（2）継続質問で画像を送って関連する回答が返ること、（3）iPhone実機で写真ライブラリ/カメラの選択肢が出て縮小後も問題なく送信できることをご確認ください。Playwright未導入のため（DESIGN.md方針どおり）、モック環境での自動E2E確認は実施していません。
+
+---
+
 ## 実装エージェントへの共通指示（要約 — 詳細は CLAUDE.md）
 
 1. **DESIGN.md が正**。矛盾に気づいたら実装を曲げるのではなく、管理者に確認して DESIGN.md を直す。

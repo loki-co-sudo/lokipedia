@@ -54,9 +54,18 @@ export interface GeneratedEntry {
   }
 }
 
+/** チャット入力に添付する画像（docs/DESIGN.md §4.4 / §5.1）。メモリ上のみで永続化しない */
+export interface ChatImage {
+  mimeType: string
+  /** base64エンコード（data: プレフィックスなし） */
+  data: string
+}
+
 /** 継続質問（docs/DESIGN.md §4.1 / §5.1）の会話履歴。メモリ上のみで永続化しない */
 export interface ChatMessage {
   role: 'user' | 'model'
   /** Markdown */
   text: string
+  /** ユーザーメッセージへの添付画像（docs/DESIGN.md §4.4）。model には付かない */
+  images?: ChatImage[]
 }

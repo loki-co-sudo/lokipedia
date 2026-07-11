@@ -160,6 +160,13 @@ interface GeneratedEntry {
 interface ChatMessage {
   role: 'user' | 'model';
   text: string;            // Markdown
+  images?: ChatImage[];    // ユーザーメッセージへの添付画像（§4.4）。model には付かない
+}
+
+// チャット入力に添付する画像（§4.4）。メモリ上のみで永続化しない
+interface ChatImage {
+  mimeType: string;
+  data: string;             // base64エンコード（data: プレフィックスなし）
 }
 ```
 
@@ -219,6 +226,17 @@ interface ChatMessage {
   - 会話の**最後の質問とその回答**の主題から辞書エントリ1件を構造化生成する。definition は会話を読んでいない人でも単体で理解できるよう再構成させる。
   - 出力要件・`responseSchema`・エラー処理は `generateEntry` と共通（§4）。回答モードは会話に固定されたものを使う。
 
+### 4.4 画像添付（チャット入力の補助情報）
+
+チャット入力欄（初回の調べる入力・継続質問の両方）から画像を添付し、`generateEntry` / `generateFollowUp` へのマルチモーダル入力として渡せる。テキストの補助情報という位置づけであり、画像だけの送信（テキスト空）も許可する。
+
+- **枚数**: 1メッセージにつき最大 `MAX_IMAGES_PER_MESSAGE`（= 4）枚。`src/lib/image.ts` に定数を置く。
+- **前処理**（`src/lib/image.ts` の `fileToChatImage`）: 選択されたファイルは `image/*` であることを確認した上で、`<canvas>` で長辺 1600px に縮小 + JPEG（品質 0.85）に再エンコードしてから base64 化する。Gemini への送信データ量を抑えるため、元ファイルの形式（HEIC 等）に関わらず常に `image/jpeg` として送る。読み込み失敗・非画像ファイルは日本語エラーメッセージを返す。
+- **Gemini リクエスト**: `contents[].parts` の先頭に画像の数だけ `inlineData: { mimeType, data }` を並べ、末尾にテキストの `text` パートを置く（`generateEntry` は `requestGeneratedEntry` 内、`generateFollowUp` は履歴の各ターンで同様に組み立てる）。
+  - テキストが空で画像のみの場合、`generateEntry` は入力欄に「（添付画像から調べたい主題を特定してください）」を、`generateFollowUp` の該当ターンは「添付した画像について教えてください。」を代わりに送る（表示上の吹き出しは空のまま。画像のみのフォールバックはリクエスト構築時にのみ適用する）。
+- **会話履歴には持ち回さない**: 初回送信の添付画像は `lastQueryImages`（ChatSessionProvider）として表示専用に保持し、`generateFollowUp` の `history` には含めない（初回の `definition` に画像から得た情報が反映されているため、履歴側で画像を再送する必要はない）。継続質問で添付した画像は、その `ChatMessage.images` としてのみ会話に乗る。
+- **`generateEntryFromConversation`（§4.3）は画像を扱わない**（対象外。テキストの transcript のみで再構成する）。
+
 ---
 
 ## 5. 画面設計
@@ -246,6 +264,7 @@ interface ChatMessage {
 - **生成前のタグ入力欄は廃止**（タグは生成結果の表示後に編集する。下記）。
 - **回答モード**（§4.2）の選択 UI は設定画面（§5.4）に置く。会話中は入力欄の上に「回答モード「◯◯」で会話中」の表示と**会話をリセット**ボタン（会話を破棄して初期状態へ）を出す。
 - textarea のフォントは **16px（`text-base`）以上**とする。iOS Safari は 16px 未満の入力欄にフォーカスすると自動ズームしてレイアウトが崩れるため（入力系要素全般の最低 16px は `index.css` の base ルールで保証）。
+- **画像添付**（§4.4）: textarea の左に添付ボタン（lucide `ImagePlus`）。`<input type="file" accept="image/*" multiple>` で選択（iOS Safari では写真ライブラリ/カメラ撮影の選択肢が自動的に出る）。選択した画像は入力欄上部にサムネイル（各画像に×で個別削除）として並べ、最大4枚。テキストが空でも画像があれば送信できる。送信後は画像もクリアする。
 
 **初回送信 → エントリカード**
 - 送信した検索ワードは user の吹き出し（`src/components/ChatBubble.tsx`）として会話エリアに表示し、その下に回答（エントリカード）を続ける。ローディング中は「考え中...」の吹き出しを表示する。
@@ -396,7 +415,8 @@ lokipedia/
 │   │   ├── gemini.ts      # Gemini 呼び出し（§4, §4.1）
 │   │   ├── settings.ts    # localStorage アクセス集約（§2.3）
 │   │   ├── text.ts        # テキスト系純粋関数（normalizeTerm 等）
-│   │   └── wordSort.ts    # 辞書ソートの純粋関数（§5.2, Phase 10）
+│   │   ├── wordSort.ts    # 辞書ソートの純粋関数（§5.2, Phase 10）
+│   │   └── image.ts       # チャット添付画像の読み込み・縮小（§4.4）
 │   ├── hooks/             # useAuth, useTheme 等
 │   ├── components/        # 再利用 UI（TagChipInput, WordCard, MarkdownView, ChatInput 等）
 │   └── pages/

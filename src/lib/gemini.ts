@@ -2,7 +2,7 @@
 // Gemini の呼び出しはこのモジュールのみが行う（CLAUDE.md 絶対ルール5）。
 
 import { ANSWER_MODE_INSTRUCTIONS, type AnswerMode } from './answerMode'
-import type { ChatMessage, ChoiceIndex, GeneratedEntry } from '../types'
+import type { ChatImage, ChatMessage, ChoiceIndex, GeneratedEntry } from '../types'
 
 const MODEL = 'gemini-2.5-flash'
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
@@ -50,11 +50,12 @@ ${ANSWER_MODE_INSTRUCTIONS[mode]}
 }
 
 function buildPrompt(input: string, existingTags: string[], mode: AnswerMode): string {
+  const inputText = input.trim() === '' ? '（添付画像から調べたい主題を特定してください）' : input
   return `あなたは日本語の学習支援AIです。以下の入力から調べたい主題を特定し、共有辞書用のエントリを1件生成してください。
-入力は単語そのものの場合も、「〜について教えて」のような文の場合も、URLやテキストの場合もあります。
+入力は単語そのものの場合も、「〜について教えて」のような文の場合も、URLやテキストの場合も、添付画像のみの場合もあります。画像が添付されている場合はその内容も主題特定の手がかりにしてください。
 
 # 入力
-${input}
+${inputText}
 
 ${entryRequirements(existingTags, mode)}`
 }
@@ -105,8 +106,9 @@ export async function generateEntry(
   apiKey: string,
   existingTags: string[],
   mode: AnswerMode,
+  images: ChatImage[] = [],
 ): Promise<GeneratedEntry> {
-  return requestGeneratedEntry(buildPrompt(input, existingTags, mode), apiKey)
+  return requestGeneratedEntry(buildPrompt(input, existingTags, mode), apiKey, images)
 }
 
 /**
@@ -122,14 +124,18 @@ export async function generateEntryFromConversation(
   return requestGeneratedEntry(buildConversationEntryPrompt(history, existingTags, mode), apiKey)
 }
 
-async function requestGeneratedEntry(promptText: string, apiKey: string): Promise<GeneratedEntry> {
+function imagePart(image: ChatImage) {
+  return { inlineData: { mimeType: image.mimeType, data: image.data } }
+}
+
+async function requestGeneratedEntry(promptText: string, apiKey: string, images: ChatImage[] = []): Promise<GeneratedEntry> {
   let response: Response
   try {
     response = await fetch(`${ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
+        contents: [{ parts: [...images.map(imagePart), { text: promptText }] }],
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema,
@@ -192,7 +198,14 @@ export async function generateFollowUp(history: ChatMessage[], apiKey: string, m
             },
           ],
         },
-        contents: history.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+        contents: history.map((m) => {
+          const hasImages = m.images !== undefined && m.images.length > 0
+          const text = m.text.trim() === '' && hasImages ? '添付した画像について教えてください。' : m.text
+          return {
+            role: m.role,
+            parts: [...(m.images ?? []).map(imagePart), { text }],
+          }
+        }),
       }),
     })
   } catch (e) {

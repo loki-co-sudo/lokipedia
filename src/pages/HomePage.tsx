@@ -12,7 +12,7 @@ import { getAnswerMode, getGeminiApiKey } from '../lib/settings'
 import { ANSWER_MODE_LABELS } from '../lib/answerMode'
 import { generateEntry, generateEntryFromConversation, generateFollowUp } from '../lib/gemini'
 import { createWordWithQuiz, findWordByTerm, listWords, updateWordWithQuiz } from '../lib/repository'
-import type { ChatMessage, GeneratedEntry, Word } from '../types'
+import type { ChatImage, ChatMessage, GeneratedEntry, Word } from '../types'
 
 /** 継続質問の回答から作成中の辞書エントリ（登録カードの状態） */
 interface FollowUpDraft {
@@ -35,6 +35,8 @@ export default function HomePage() {
   const {
     lastQuery,
     setLastQuery,
+    lastQueryImages,
+    setLastQueryImages,
     sourceUrl,
     setSourceUrl,
     entry,
@@ -51,6 +53,7 @@ export default function HomePage() {
   } = useChatSession()
 
   const [input, setInput] = useState(searchParams.get('q') ?? '')
+  const [images, setImages] = useState<ChatImage[]>([])
   const [existingTags, setExistingTags] = useState<string[]>([])
 
   const [generating, setGenerating] = useState(false)
@@ -90,8 +93,9 @@ export default function HomePage() {
     if (sourceUrlParam) setSourceUrl(sourceUrlParam)
   }, [sourceUrlParam, setSourceUrl])
 
-  async function handleGenerate(query: string) {
+  async function handleGenerate(query: string, queryImages: ChatImage[] = []) {
     setLastQuery(query)
+    setLastQueryImages(queryImages)
     setGenerating(true)
     setGenError(null)
     setSaveError(null)
@@ -101,7 +105,7 @@ export default function HomePage() {
       // 回答モードは生成開始時の設定値を会話に固定する（docs/DESIGN.md §4.2）
       const mode = getAnswerMode()
       setConversationMode(mode)
-      const result = await generateEntry(query, key, existingTags, mode)
+      const result = await generateEntry(query, key, existingTags, mode, queryImages)
       setEntry(result)
       setEntryTags(result.tags)
       setConversation([{ role: 'model', text: result.definition }])
@@ -117,13 +121,16 @@ export default function HomePage() {
     }
   }
 
-  async function handleFollowUp(question: string) {
+  async function handleFollowUp(question: string, questionImages: ChatImage[] = []) {
     const key = getGeminiApiKey()
     if (!key) {
       setFollowUpError('Gemini APIキーが設定されていません。設定画面で登録してください。')
       return
     }
-    const historyWithQuestion: ChatMessage[] = [...conversation, { role: 'user', text: question }]
+    const historyWithQuestion: ChatMessage[] = [
+      ...conversation,
+      { role: 'user', text: question, images: questionImages.length > 0 ? questionImages : undefined },
+    ]
     setConversation(historyWithQuestion)
     setFollowUpLoading(true)
     setFollowUpError(null)
@@ -139,27 +146,30 @@ export default function HomePage() {
 
   async function handleSend() {
     const trimmed = input.trim()
-    if (trimmed === '') return
+    if (trimmed === '' && images.length === 0) return
+    const sentImages = images
     setInput('')
+    setImages([])
     if (!entry) {
-      await handleGenerate(trimmed)
+      await handleGenerate(trimmed, sentImages)
     } else {
-      await handleFollowUp(trimmed)
+      await handleFollowUp(trimmed, sentImages)
     }
   }
 
   async function handleRegenerate() {
-    if (lastQuery.trim() === '' || generating) return
+    if ((lastQuery.trim() === '' && lastQueryImages.length === 0) || generating) return
     setConversation([])
     setFollowUpError(null)
     setDuplicate(null)
     closeDraft()
-    await handleGenerate(lastQuery)
+    await handleGenerate(lastQuery, lastQueryImages)
   }
 
   function handleReset() {
     resetSession()
     setInput('')
+    setImages([])
     setGenError(null)
     setSaveError(null)
     setFollowUpError(null)
@@ -311,7 +321,9 @@ export default function HomePage() {
         </p>
       )}
 
-      {lastQuery !== '' && <ChatBubble role="user" text={lastQuery} />}
+      {(lastQuery !== '' || lastQueryImages.length > 0) && (
+        <ChatBubble role="user" text={lastQuery} images={lastQueryImages} />
+      )}
 
       {genError && <p className="text-sm text-app-danger">{genError}</p>}
 
@@ -356,7 +368,7 @@ export default function HomePage() {
                 const messageIndex = i + 1
                 return (
                   <div key={messageIndex} className="space-y-2">
-                    <ChatBubble role={msg.role} text={msg.text} />
+                    <ChatBubble role={msg.role} text={msg.text} images={msg.images} />
                     {msg.role === 'model' &&
                       isAdmin &&
                       geminiKey &&
@@ -415,6 +427,8 @@ export default function HomePage() {
       <ChatInput
         value={input}
         onChange={setInput}
+        images={images}
+        onImagesChange={setImages}
         onSend={() => void handleSend()}
         disabled={inputDisabled}
         placeholder={entry ? '追加で質問する...' : 'lokipediaで検索'}
