@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { RotateCcw } from 'lucide-react'
+import Confetti from '../components/Confetti'
+import LokiPortrait from '../components/LokiPortrait'
 import MarkdownView from '../components/MarkdownView'
 import Skeleton from '../components/Skeleton'
 import TagToggleList from '../components/TagToggleList'
@@ -9,6 +11,15 @@ import { shuffleArray, shuffleQuizChoices, type ShuffledChoices } from '../lib/q
 import type { Quiz, Word } from '../types'
 
 type CountOption = 5 | 10 | 'all'
+
+/** 満点時にロキから贈られる祝福メッセージ（DESIGN.md §4.2 のロキ人格＝馴れ馴れしいが憎めないトリックスター）。 */
+const PERFECT_SCORE_MESSAGES = [
+  '……お見事。全問正解とはね。俺の悪知恵をもってしても、これは称賛するしかないな。',
+  'ほう、満点か。仕込んだ罠を涼しい顔で潜り抜けるとは、なかなかやるじゃないか。',
+  '全問正解、乾杯だ。……妬ましいから、これは内緒にしといてやるよ。',
+  'やるじゃないか、相棒。次はもっと厄介な謎を用意しておくとしよう。',
+  '見事なもんだ。俺の企みを丸ごと打ち破るとは、大した知恵者だよ、お前は。',
+]
 
 interface SessionQuiz {
   quiz: Quiz
@@ -36,6 +47,7 @@ export default function QuizPage() {
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null)
   const [answered, setAnswered] = useState(false)
   const [wrongEntries, setWrongEntries] = useState<SessionQuiz[]>([])
+  const [perfectMessage, setPerfectMessage] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([listWords(), listQuizzes()])
@@ -92,6 +104,7 @@ export default function QuizPage() {
     setSelectedChoice(null)
     setAnswered(false)
     setWrongEntries([])
+    setPerfectMessage(null)
     setStage('playing')
   }
 
@@ -114,6 +127,9 @@ export default function QuizPage() {
 
   function handleNext() {
     if (currentIndex + 1 >= session.length) {
+      if (wrongEntries.length === 0) {
+        setPerfectMessage(PERFECT_SCORE_MESSAGES[Math.floor(Math.random() * PERFECT_SCORE_MESSAGES.length)])
+      }
       setStage('result')
       return
     }
@@ -255,6 +271,21 @@ export default function QuizPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">結果</h1>
+
+      {perfectMessage !== null && (
+        <>
+          <Confetti />
+          <div className="flex animate-pop-in flex-col items-center gap-3 rounded-xl border border-app-accent bg-app-surface p-6 text-center motion-reduce:animate-none">
+            <div className="relative flex items-center justify-center animate-float-slow motion-reduce:animate-none">
+              <div className="absolute inset-0 -z-10 rounded-full bg-app-accent/30 blur-2xl animate-glow-slow motion-reduce:animate-none" />
+              <LokiPortrait className="h-28 w-24" />
+            </div>
+            <p className="font-semibold text-app-accent">満点達成！</p>
+            <p className="break-words text-sm text-app-text-muted">{perfectMessage}</p>
+          </div>
+        </>
+      )}
+
       <p className="rounded-xl border border-app-border bg-app-surface p-4 text-center text-lg font-semibold">
         {session.length}問中 {score}問正解
       </p>
