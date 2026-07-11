@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { BookPlus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
 import ChatBubble from '../components/ChatBubble'
 import ChatInput from '../components/ChatInput'
+import FoxIcon from '../components/FoxIcon'
 import GeneratedEntryCard from '../components/GeneratedEntryCard'
 import Toast from '../components/Toast'
 import { useAuth } from '../hooks/useAuth'
@@ -293,17 +294,30 @@ export default function HomePage() {
 
   const inputDisabled = authLoading || !isAdmin || !geminiKey || generating || followUpLoading
 
+  // 何も入力・生成していない初期状態でだけ、狐面をロゴと入力欄の間いっぱいに明滅させる。
+  const isEmptyState =
+    lastQuery === '' && lastQueryImages.length === 0 && !entry && !generating && !genError
+
   return (
     <div className="space-y-4" style={{ paddingBottom: chatInputHeight + 8 }}>
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
 
-      <div className="flex flex-col items-center gap-3 pt-6 pb-2">
-        <img
-          src="/icon-192.png"
-          alt=""
-          className="h-16 w-16 animate-glow-slow rounded-2xl motion-reduce:animate-none"
+      <div
+        className="flex flex-col items-center gap-3 pt-6 pb-2"
+        style={
+          isEmptyState
+            ? { minHeight: `calc(100dvh - 5rem - env(safe-area-inset-bottom) - ${chatInputHeight}px)` }
+            : undefined
+        }
+      >
+        <h1 className="font-logo -rotate-2 shrink-0 text-4xl text-app-text">lokipedia</h1>
+        <FoxIcon
+          className={
+            isEmptyState
+              ? 'w-full min-h-0 flex-1 animate-glow-slow motion-reduce:animate-none'
+              : 'h-16 w-16 shrink-0 animate-glow-slow motion-reduce:animate-none'
+          }
         />
-        <h1 className="font-logo -rotate-2 text-4xl text-app-text">lokipedia</h1>
       </div>
 
       {geminiDisabledReason && (
