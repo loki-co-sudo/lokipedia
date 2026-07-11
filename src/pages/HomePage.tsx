@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import { BookPlus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
@@ -22,6 +22,25 @@ interface FollowUpDraft {
   entry: GeneratedEntry
   tags: string[]
   duplicate: Word | null
+}
+
+/** 初期状態でヒントとして表示するサジェスト語（知的好奇心をくすぐる語を選定） */
+const SUGGESTION_POOL = [
+  'セレンディピティ',
+  'シュレーディンガーの猫',
+  'オッカムの剃刀',
+  'パレイドリア',
+  'メメント・モリ',
+  'アンチノミー',
+  'デジャヴ',
+  'シンクロニシティ',
+  'トリックスター',
+  'ダニング=クルーガー効果',
+]
+
+function pickSuggestions(count: number): string[] {
+  const shuffled = [...SUGGESTION_POOL].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, count)
 }
 
 /**
@@ -294,9 +313,11 @@ export default function HomePage() {
 
   const inputDisabled = authLoading || !isAdmin || !geminiKey || generating || followUpLoading
 
-  // 何も入力・生成していない初期状態でだけ、狐面をロゴと入力欄の間いっぱいに明滅させる。
+  // 何も入力・生成していない初期状態でだけ、ロゴと入力欄の間に狐面+サジェストのヒーローを表示する。
   const isEmptyState =
     lastQuery === '' && lastQueryImages.length === 0 && !entry && !generating && !genError
+
+  const suggestions = useMemo(() => pickSuggestions(5), [])
 
   return (
     <div className="space-y-4" style={{ paddingBottom: chatInputHeight + 8 }}>
@@ -311,13 +332,33 @@ export default function HomePage() {
         }
       >
         <h1 className="font-logo -rotate-2 shrink-0 text-4xl text-app-text">lokipedia</h1>
-        <FoxIcon
-          className={
-            isEmptyState
-              ? 'w-full min-h-0 flex-1 animate-glow-slow motion-reduce:animate-none'
-              : 'h-16 w-16 shrink-0 animate-glow-slow motion-reduce:animate-none'
-          }
-        />
+
+        {isEmptyState ? (
+          <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-8">
+            <div className="relative flex items-center justify-center animate-float-slow motion-reduce:animate-none">
+              <div className="absolute inset-0 -z-10 rounded-full bg-app-accent/30 blur-2xl animate-glow-slow motion-reduce:animate-none" />
+              <FoxIcon className="h-24 w-24 sm:h-28 sm:w-28" />
+            </div>
+            <div className="flex flex-col items-center gap-3 px-4">
+              <p className="text-sm text-app-text-muted">気になる言葉を投げかけてみよう</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {suggestions.map((term) => (
+                  <button
+                    key={term}
+                    type="button"
+                    onClick={() => void handleGenerate(term)}
+                    disabled={inputDisabled}
+                    className="rounded-full border border-app-border px-3 py-1.5 text-xs font-medium text-app-text-muted transition-colors hover:border-app-accent hover:text-app-accent disabled:opacity-40"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <FoxIcon className="h-16 w-16 shrink-0" />
+        )}
       </div>
 
       {geminiDisabledReason && (

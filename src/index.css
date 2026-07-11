@@ -71,14 +71,25 @@ body {
 @theme {
   --font-logo: 'Snell Roundhand', 'Segoe Script', 'Bradley Hand', 'Brush Script MT', cursive;
   --animate-glow-slow: glow-slow 3s ease-in-out infinite;
+  --animate-float-slow: float-slow 4s ease-in-out infinite;
 
   @keyframes glow-slow {
     0%,
     100% {
-      opacity: 1;
+      opacity: 0.6;
     }
     50% {
-      opacity: 0.35;
+      opacity: 1;
+    }
+  }
+
+  @keyframes float-slow {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
     }
   }
 }
