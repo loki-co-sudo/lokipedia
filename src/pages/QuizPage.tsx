@@ -279,12 +279,7 @@ export default function QuizPage() {
             <div className="relative flex animate-float-slow items-center justify-center motion-reduce:animate-none">
               <div className="absolute -inset-3 -z-10 animate-glow-slow rounded-full bg-app-accent/40 blur-xl motion-reduce:animate-none" />
               <div className="h-32 w-32 overflow-hidden rounded-full border-2 border-app-accent/70 shadow-lg">
-                <img
-                  src={lokiPortrait}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  style={{ objectPosition: '40% 25%' }}
-                />
+                <img src={lokiPortrait} alt="" className="h-full w-full object-cover" />
               </div>
             </div>
             <p className="font-semibold text-app-accent">満点達成！</p>
