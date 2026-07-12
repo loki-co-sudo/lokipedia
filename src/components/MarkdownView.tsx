@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown'
+import { repairMarkdown } from '../lib/text'
 
 // AI 生成テキストの Markdown レンダリング。react-markdown は既定で HTML を無効化する
 // （rehype-raw 等を使わない限り dangerouslySetInnerHTML 相当の挙動にならない。CLAUDE.md 絶対ルール4）。
@@ -21,7 +22,7 @@ export default function MarkdownView({ children }: { children: string }) {
         [&_a]:break-words [&_a]:text-app-accent [&_a]:underline
         [&_blockquote]:border-l-4 [&_blockquote]:border-app-border [&_blockquote]:pl-3 [&_blockquote]:text-app-text-muted"
     >
-      <ReactMarkdown>{children}</ReactMarkdown>
+      <ReactMarkdown>{repairMarkdown(children)}</ReactMarkdown>
     </div>
   )
 }

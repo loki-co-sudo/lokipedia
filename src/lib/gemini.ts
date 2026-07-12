@@ -34,6 +34,7 @@ function entryRequirements(existingTags: string[], mode: AnswerMode): string {
 - term: 調べたい主題を正規化した見出し語（日本語）。
 - reading: term のよみがなを**ひらがな**で（例: term「冪等性」→「べきとうせい」、英字語は日本語での読み「PWA」→「ぴーだぶりゅーえー」）。
 - definition: term について Markdown 形式で日本語の詳細な解説。見出し(##)や箇条書きを活用する。文体・深さは下記「回答モード」に従う。
+  **見出しや箇条書きの前後には必ず改行文字(\n)を入れ、直前の文にそのまま連結しないこと。**
 - tags: term のジャンルを表す日本語タグをちょうど3つ。以下の既存タグ一覧に近いものがあれば表記揺れを防ぐため必ず再利用すること。
   既存タグ一覧: ${existingTagsText}
 - quiz: 応用情報技術者試験の午前試験に似た、知識の理解を問う4択問題を1問。
@@ -43,6 +44,7 @@ function entryRequirements(existingTags: string[], mode: AnswerMode): string {
   - correctIndex: 正解の choices 内での添字（0〜3の整数）
   - explanation: 正解の根拠と、誤答がそれぞれ誤りである理由を含む詳しい解説（Markdown）。文体は下記「回答モード」に従う。
     選択肢に言及するときは「選択肢2」「B」のような番号・記号での参照を絶対に使わず、必ず選択肢の内容を「」で引用して言及する（例:「『公開鍵で暗号化する』が正解である。『共通鍵を共有する』は〜のため誤り」）。
+    見出しや箇条書きを使う場合は、その前後に必ず改行文字(\n)を入れ、直前の文にそのまま連結しないこと。
 
 # 回答モード（definition と quiz.explanation の文体にのみ適用する。term / reading / tags / question / choices は中立のまま）
 ${ANSWER_MODE_INSTRUCTIONS[mode]}
@@ -194,7 +196,7 @@ export async function generateFollowUp(history: ChatMessage[], apiKey: string, m
         systemInstruction: {
           parts: [
             {
-              text: `直前までの解説の文脈を踏まえ、日本語の Markdown で簡潔に回答せよ。回答の文体: ${ANSWER_MODE_INSTRUCTIONS[mode]}`,
+              text: `直前までの解説の文脈を踏まえ、日本語の Markdown で簡潔に回答せよ。見出しや箇条書きを使う場合は、その前後に必ず改行文字(\\n)を入れ、直前の文にそのまま連結しないこと。回答の文体: ${ANSWER_MODE_INSTRUCTIONS[mode]}`,
             },
           ],
         },
